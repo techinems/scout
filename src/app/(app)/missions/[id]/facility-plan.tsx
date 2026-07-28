@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { IconCopy, IconRoute, IconShare } from "@/components/icons";
+import { toHtml, toPlainText } from "@/lib/medplan/template";
 import { generateFacilityPlan } from "./facility-actions";
 
 export function FacilityPlan({
@@ -24,6 +25,8 @@ export function FacilityPlan({
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  const plain = note ? toPlainText(note) : null;
+
   const generate = () =>
     startTransition(async () => {
       setError(null);
@@ -32,18 +35,32 @@ export function FacilityPlan({
       else setError(res.error);
     });
 
+  /**
+   * Copy both flavors: text/html carries real <h1>/<h2> headings, which iOS
+   * (Notes, Mail, …) maps onto its Title/Heading paragraph styles on paste;
+   * text/plain is the fallback for plain-text targets.
+   */
   const copy = async () => {
-    if (!note) return;
-    await navigator.clipboard.writeText(note);
+    if (!note || !plain) return;
+    try {
+      const item = new ClipboardItem({
+        "text/html": new Blob([toHtml(note)], { type: "text/html" }),
+        "text/plain": new Blob([plain], { type: "text/plain" }),
+      });
+      await navigator.clipboard.write([item]);
+    } catch {
+      // Older browsers without ClipboardItem: plain text only.
+      await navigator.clipboard.writeText(plain);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
 
   const share = async () => {
-    if (!note) return;
+    if (!plain) return;
     if (navigator.share) {
       try {
-        await navigator.share({ text: note });
+        await navigator.share({ text: plain });
       } catch {
         // user dismissed the sheet
       }
@@ -80,16 +97,16 @@ export function FacilityPlan({
           <p className="text-[13px] text-ink-faint">
             Computes the closest facility of each category from the target
             {goTime ? " with traffic at go-time" : ""}, estimates aeromedical response, and formats
-            it as a note for your phone.
+            it as a note for your phone. The layout is editable in Administration → Med plan template.
           </p>
         )}
 
         {error && <p className="mb-3 text-[13px] text-danger">{error}</p>}
 
-        {note && (
+        {plain && (
           <>
             <pre className="data max-h-96 overflow-auto rounded-(--radius-control) border border-edge bg-bg p-3 text-[12px] leading-relaxed whitespace-pre-wrap">
-              {note}
+              {plain}
             </pre>
             <div className="mt-3 flex gap-2">
               <Button variant="outline" size="sm" onClick={copy}>
@@ -99,6 +116,9 @@ export function FacilityPlan({
                 <IconShare /> Share to Notes
               </Button>
             </div>
+            <p className="mt-2 text-[11px] text-ink-faint">
+              Copy keeps heading styles when pasting into iOS Notes; the share sheet sends plain text.
+            </p>
           </>
         )}
       </div>

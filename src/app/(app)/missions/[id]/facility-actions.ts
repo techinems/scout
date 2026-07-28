@@ -6,6 +6,8 @@ import { assertPermission } from "@/lib/auth/current-user";
 import { driveMatrix, haversineMeters } from "@/lib/google/routes";
 import { appConfig } from "@/lib/app-config";
 import { formatGoTime, formatDateTime, metersToMiles, minutesToHuman, toDDM } from "@/lib/format";
+import { renderTemplate, type TemplateContext } from "@/lib/medplan/template";
+import { DEFAULT_MEDPLAN_TEMPLATE, MEDPLAN_TEMPLATE_KEY } from "@/lib/medplan/default-template";
 
 export type GenerateResult = { ok: true; content: string } | { ok: false; error: string };
 
@@ -79,12 +81,7 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
 
   const categories = await db.facilityCategory.findMany({ orderBy: { sortOrder: "asc" } });
 
-  // ── Render the med plan ──
-  const lines: string[] = [];
-  lines.push(`MED PLAN — ${mission.name.toUpperCase()}`);
-  lines.push(`Go-time: ${formatGoTime(mission.goTime)} ET`);
-  lines.push("");
-
+  // ── Assemble the template context ──
   const kindOrder = ["MEET", "BRIEF", "STAGING", "TARGET", "LZ", "OTHER"] as const;
   const kindLabel: Record<string, string> = {
     MEET: "MEET",
@@ -95,76 +92,92 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
     OTHER: "LOC",
   };
   const lzs = mission.locations.filter((l) => l.kind === "LZ");
-  for (const kind of kindOrder) {
-    for (const loc of mission.locations.filter((l) => l.kind === kind)) {
-      lines.push(`${kindLabel[kind]}: ${loc.label ? `${loc.label} — ` : ""}${loc.address}`);
-      // LZs carry radio-readable coordinates.
-      if (kind === "LZ") lines.push(`  ${toDDM(loc.lat, loc.lng)}`);
-    }
-  }
-  lines.push("");
-
-  lines.push(
-    matrix.trafficAware
-      ? `CLOSEST FACILITIES (drive from TGT @ go-time)`
-      : `CLOSEST FACILITIES (straight-line — routing unavailable)`,
+  const locations = kindOrder.flatMap((kind) =>
+    mission.locations
+      .filter((l) => l.kind === kind)
+      .map((l) => ({
+        kindLabel: kindLabel[kind],
+        label: l.label,
+        address: l.address,
+        notes: l.notes,
+        ddm: kind === "LZ" ? toDDM(l.lat, l.lng) : "",
+      })),
   );
+
   const aero = appConfig.aeromedical;
   const cruiseMph = aero.cruiseSpeedKnots * 1.15078;
   // Aircraft fly to the LZ when one is set, else overhead the target.
   const flightDest = lzs[0] ?? target;
-  for (const category of categories) {
+  const facilityRows = categories.flatMap((category) => {
     const hit = best.get(category.id);
-    if (!hit) continue;
+    if (!hit) return [];
     const f = hit.facility;
-    const extras = [f.traumaLevel && `Lvl ${f.traumaLevel}`, f.hasHelipad && "helipad"].filter(Boolean).join(", ");
-    const eta =
-      hit.durationMin !== null
-        ? `${minutesToHuman(hit.durationMin)} / ${metersToMiles(hit.distanceMeters)}`
-        : `${metersToMiles(hit.distanceMeters)} direct`;
-    lines.push(`${category.noteLabel}: ${f.name}${extras ? ` (${extras})` : ""}`);
-    lines.push(`  ${f.address} · ${eta}`);
-    if (f.phone) lines.push(`  ${f.phone}`);
-
+    let air = "";
     if (category.isAeromedical) {
-      const flightMiles = haversineMeters({ lat: f.lat, lng: f.lng }, { lat: flightDest.lat, lng: flightDest.lng }) / 1609.344;
+      const flightMiles =
+        haversineMeters({ lat: f.lat, lng: f.lng }, { lat: flightDest.lat, lng: flightDest.lng }) / 1609.344;
       const flightMin = (flightMiles / cruiseMph) * 60;
       const totalMin = aero.launchMinutes + flightMin + aero.landingBufferMinutes;
-      lines.push(
-        `  Est request→landing: ~${Math.ceil(totalMin)} min ` +
-          `(${aero.launchMinutes} launch + ${Math.ceil(flightMin)} flight @ ${aero.cruiseSpeedKnots} kt + ${aero.landingBufferMinutes} land)` +
-          ` to ${lzs[0] ? "LZ" : "TGT"}`,
-      );
-      if (lzs[0]) lines.push(`  LZ coords: ${toDDM(lzs[0].lat, lzs[0].lng)}`);
+      air =
+        `~${Math.ceil(totalMin)} min (${aero.launchMinutes} launch + ${Math.ceil(flightMin)} flight @ ` +
+        `${aero.cruiseSpeedKnots} kt + ${aero.landingBufferMinutes} land) to ${lzs[0] ? "LZ" : "TGT"}`;
     }
-  }
-  lines.push("");
+    return [
+      {
+        categoryLabel: category.noteLabel,
+        name: f.name,
+        extras: [f.traumaLevel && `Lvl ${f.traumaLevel}`, f.hasHelipad && "helipad"].filter(Boolean).join(", "),
+        address: f.address,
+        eta:
+          hit.durationMin !== null
+            ? `${minutesToHuman(hit.durationMin)} / ${metersToMiles(hit.distanceMeters)}`
+            : `${metersToMiles(hit.distanceMeters)} direct`,
+        phone: f.phone,
+        air,
+        lzCoords: category.isAeromedical && lzs[0] ? toDDM(lzs[0].lat, lzs[0].lng) : "",
+      },
+    ];
+  });
 
-  if (mission.crews.length > 0 || mission.assignments.length > 0) {
-    lines.push("CREWS");
-    for (const crew of mission.crews) {
-      const members = crew.members
+  const crews = mission.crews.map((crew) => ({
+    name: crew.name,
+    vehicle: crew.vehicle?.designator ?? "",
+    members:
+      crew.members
         .map((m) => {
           const cs = m.personnel.callsign ? ` [${m.personnel.callsign}]` : "";
           const role = m.role ? ` (${m.role})` : "";
           return `${m.personnel.name}${cs}${role}`;
         })
-        .join(", ");
-      lines.push(`${crew.name}${crew.vehicle ? ` — ${crew.vehicle.designator}` : ""}: ${members || "unstaffed"}`);
-    }
-    const pool = mission.assignments.filter((a) => !a.crewId);
-    if (pool.length > 0) {
-      lines.push(`Unassigned: ${pool.map((a) => a.personnel.name).join(", ")}`);
-    }
-    const looseVehicles = mission.vehicles.filter((mv) => !mission.crews.some((c) => c.vehicleId === mv.vehicleId));
-    if (looseVehicles.length > 0) {
-      lines.push(`Vehicles: ${looseVehicles.map((mv) => mv.vehicle.designator).join(", ")}`);
-    }
-    lines.push("");
-  }
+        .join(", ") || "unstaffed",
+  }));
+  const pool = mission.assignments.filter((a) => !a.crewId);
+  const looseVehicles = mission.vehicles.filter((mv) => !mission.crews.some((c) => c.vehicleId === mv.vehicleId));
 
-  lines.push(`Generated ${formatDateTime(new Date())} ET by ${user.name}`);
-  const content = lines.join("\n");
+  const context: TemplateContext = {
+    missionName: mission.name,
+    goTime: `${formatGoTime(mission.goTime)} ET`,
+    trafficNote: matrix.trafficAware ? "drive from TGT @ go-time" : "straight-line — routing unavailable",
+    generatedAt: `${formatDateTime(new Date())} ET`,
+    generatedBy: user.name,
+    hasLocations: locations.length > 0,
+    locations,
+    facilities: facilityRows,
+    hasCrews: mission.crews.length > 0 || mission.assignments.length > 0,
+    crews,
+    unassigned: pool.map((a) => a.personnel.name).join(", "),
+    looseVehicles: looseVehicles.map((mv) => mv.vehicle.designator).join(", "),
+  };
+
+  const setting = await db.appSetting.findUnique({ where: { key: MEDPLAN_TEMPLATE_KEY } });
+  const template = setting?.value ?? DEFAULT_MEDPLAN_TEMPLATE;
+  let content: string;
+  try {
+    content = renderTemplate(template, context);
+  } catch (err) {
+    console.error("Custom med plan template failed, falling back to default:", err);
+    content = renderTemplate(DEFAULT_MEDPLAN_TEMPLATE, context);
+  }
 
   await db.missionNote.create({
     data: {

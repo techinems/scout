@@ -9,9 +9,11 @@ import { Modal } from "@/components/ui/modal";
 import { IconPlus } from "@/components/icons";
 import { PERMISSION_LABELS, type Permission } from "@/lib/rbac/permissions";
 import { formatDateTime } from "@/lib/format";
+import { DEFAULT_MEDPLAN_TEMPLATE, MEDPLAN_TEMPLATE_KEY } from "@/lib/medplan/default-template";
 import { RoleForm } from "./role-form";
 import { UserRolesForm } from "./user-roles";
 import { StatusTypeManager } from "./status-types";
+import { MedplanTemplateEditor } from "./medplan-template";
 
 export const metadata: Metadata = { title: "Administration" };
 
@@ -20,7 +22,12 @@ export default async function AdminPage() {
   const canRoles = user.permissions.has("admin.roles");
   const canUsers = user.permissions.has("admin.users");
   const canStatuses = user.permissions.has("status.configure");
-  if (!canRoles && !canUsers && !canStatuses) redirect("/denied");
+  const canTemplate = user.permissions.has("note.configure");
+  if (!canRoles && !canUsers && !canStatuses && !canTemplate) redirect("/denied");
+
+  const templateSetting = canTemplate
+    ? await db.appSetting.findUnique({ where: { key: MEDPLAN_TEMPLATE_KEY } })
+    : null;
 
   const [roles, users, statusTypes] = await Promise.all([
     canRoles || canUsers
@@ -150,6 +157,18 @@ export default async function AdminPage() {
               ))}
             </ul>
           )}
+        </Card>
+      )}
+
+      {canTemplate && (
+        <Card>
+          <CardHeader title="Med plan template" />
+          <div className="p-4">
+            <MedplanTemplateEditor
+              current={templateSetting?.value ?? DEFAULT_MEDPLAN_TEMPLATE}
+              isCustomized={Boolean(templateSetting)}
+            />
+          </div>
         </Card>
       )}
 

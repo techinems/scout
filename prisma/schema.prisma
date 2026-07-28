@@ -234,6 +234,16 @@ model CrewStatusEvent {
   @@index([crewId, createdAt])
 }
 
+// ─── App settings ───────────────────────────────────────────────────
+
+/// Small key/value store for admin-editable settings (e.g. the med plan
+/// template under key "medplan.template").
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 // ─── Web Push ───────────────────────────────────────────────────────
 
 model PushSubscription {

@@ -13,6 +13,7 @@ export const PERMISSIONS = [
   "vehicle.view",
   "vehicle.edit",
   "note.generate",
+  "note.configure",
   "status.set",
   "status.configure",
   "admin.roles",
@@ -31,6 +32,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "vehicle.view": "View vehicles",
   "vehicle.edit": "Create & edit vehicles",
   "note.generate": "Generate mission notes",
+  "note.configure": "Edit the med plan template",
   "status.set": "Set crew status",
   "status.configure": "Manage crew status types",
   "admin.roles": "Manage roles & permissions",
@@ -42,7 +44,7 @@ export const PERMISSION_GROUPS: { name: string; permissions: Permission[] }[] = 
   { name: "Missions", permissions: ["mission.view", "mission.edit", "note.generate", "status.set"] },
   { name: "Facilities", permissions: ["facility.view", "facility.edit"] },
   { name: "Roster", permissions: ["personnel.view", "personnel.edit", "vehicle.view", "vehicle.edit"] },
-  { name: "Administration", permissions: ["status.configure", "admin.roles", "admin.users"] },
+  { name: "Administration", permissions: ["note.configure", "status.configure", "admin.roles", "admin.users"] },
 ];
 
 export function isPermission(value: string): value is Permission {

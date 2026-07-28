@@ -5,6 +5,8 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
 import { isPermission } from "@/lib/rbac/permissions";
+import { renderTemplate } from "@/lib/medplan/template";
+import { MEDPLAN_TEMPLATE_KEY } from "@/lib/medplan/default-template";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 
 // ─── Roles ──────────────────────────────────────────────────────────
@@ -90,6 +92,72 @@ export async function setUserRoles(userId: string, roleIds: string[]): Promise<A
     await db.userRole.createMany({ data: valid.map((r) => ({ userId, roleId: r.id })) });
   }
 
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+// ─── Med plan template ──────────────────────────────────────────────
+
+/** Sample data used to validate a template before saving. */
+const SAMPLE_CONTEXT = {
+  missionName: "Sample Mission",
+  goTime: "Thu, Jul 30, 06:00 ET",
+  trafficNote: "drive from TGT @ go-time",
+  generatedAt: "Jul 28, 2026, 09:00 ET",
+  generatedBy: "Sample User",
+  hasLocations: true,
+  locations: [{ kindLabel: "TGT", label: "", address: "123 Main St", notes: "", ddm: "" }],
+  facilities: [
+    {
+      categoryLabel: "TRAUMA",
+      name: "Sample Medical Center",
+      extras: "Lvl I",
+      address: "1 Hospital Way",
+      eta: "12 min / 4.0 mi",
+      phone: "(555) 555-0100",
+      air: "",
+      lzCoords: "",
+    },
+  ],
+  hasCrews: true,
+  crews: [{ name: "Alpha", vehicle: "M-1", members: "A. Sample (Medic)" }],
+  unassigned: "",
+  looseVehicles: "",
+};
+
+export async function saveMedplanTemplate(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  try {
+    await assertPermission("note.configure");
+  } catch {
+    return { ok: false, error: "You don't have permission to edit the med plan template." };
+  }
+
+  const template = String(formData.get("template") ?? "");
+  if (!template.trim()) return { ok: false, error: "Template can't be empty — use Reset to restore the default." };
+
+  try {
+    renderTemplate(template, SAMPLE_CONTEXT);
+  } catch (err) {
+    return { ok: false, error: `Template error: ${err instanceof Error ? err.message : "invalid syntax"}` };
+  }
+
+  await db.appSetting.upsert({
+    where: { key: MEDPLAN_TEMPLATE_KEY },
+    update: { value: template },
+    create: { key: MEDPLAN_TEMPLATE_KEY, value: template },
+  });
+
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function resetMedplanTemplate(): Promise<ActionResult> {
+  try {
+    await assertPermission("note.configure");
+  } catch {
+    return { ok: false, error: "No permission." };
+  }
+  await db.appSetting.deleteMany({ where: { key: MEDPLAN_TEMPLATE_KEY } });
   revalidatePath("/admin");
   return { ok: true };
 }

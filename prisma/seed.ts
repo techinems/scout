@@ -117,7 +117,7 @@ async function main() {
   await upsertRole(
     "Team Member",
     "Operational access: missions, facilities, roster, note generation.",
-    ALL_PERMISSIONS.filter((p) => !p.startsWith("admin.") && p !== "status.configure"),
+    ALL_PERMISSIONS.filter((p) => !p.startsWith("admin.") && p !== "status.configure" && p !== "note.configure"),
   );
   await upsertRole(
     "Observer",
