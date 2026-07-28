@@ -1,0 +1,294 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Identity & RBAC ────────────────────────────────────────────────
+
+model User {
+  id          String    @id @default(cuid())
+  /// Keycloak `sub` claim. Null only for the synthetic dev user.
+  sub         String?   @unique
+  email       String    @unique
+  name        String
+  createdAt   DateTime  @default(now())
+  lastLoginAt DateTime?
+
+  roles          UserRole[]
+  missionsMade   Mission[]     @relation("MissionCreatedBy")
+  notesGenerated MissionNote[]
+  personnel         Personnel?
+  pushSubscriptions PushSubscription[]
+  statusEvents      CrewStatusEvent[]
+}
+
+model Role {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String  @default("")
+  /// System roles (e.g. Administrator) cannot be deleted from the UI.
+  isSystem    Boolean @default(false)
+
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+/// One granted permission string per row. Valid values live in
+/// `src/lib/rbac/permissions.ts` — the DB stays agnostic so adding a
+/// permission is a code change, not a migration.
+model RolePermission {
+  roleId     String
+  permission String
+  role       Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permission])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+// ─── Facilities ─────────────────────────────────────────────────────
+
+model FacilityCategory {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  slug      String  @unique
+  /// Short label used in generated notes, e.g. "TRAUMA".
+  noteLabel String
+  /// Accent color token used by the UI (hex).
+  color     String  @default("#8b9dc3")
+  sortOrder Int     @default(0)
+  isSystem  Boolean @default(false)
+  /// Aeromedical categories get a request→landing estimate in the med plan.
+  isAeromedical Boolean @default(false)
+
+  facilities Facility[]
+}
+
+model Facility {
+  id         String  @id @default(cuid())
+  name       String
+  categoryId String
+  address    String
+  lat        Float
+  lng        Float
+  phone      String  @default("")
+  /// e.g. "I", "II", "III" for trauma centers; empty otherwise.
+  traumaLevel String @default("")
+  hasHelipad Boolean @default(false)
+  notes      String  @default("")
+  isActive   Boolean @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category FacilityCategory @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId, isActive])
+}
+
+// ─── Missions ───────────────────────────────────────────────────────
+
+enum MissionStatus {
+  DRAFT
+  PLANNED
+  ACTIVE
+  COMPLETE
+  CANCELLED
+}
+
+enum LocationKind {
+  MEET
+  BRIEF
+  STAGING
+  TARGET
+  /// Aeromedical landing zone — picked on the map, listed with DDM coords.
+  LZ
+  OTHER
+}
+
+model Mission {
+  id          String        @id @default(cuid())
+  name        String
+  status      MissionStatus @default(DRAFT)
+  /// Tentative go-time; drives traffic-aware routing.
+  goTime      DateTime?
+  briefing    String        @default("")
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  createdBy    User?             @relation("MissionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  locations    MissionLocation[]
+  crews        MissionCrew[]
+  assignments  MissionAssignment[]
+  vehicles     MissionVehicle[]
+  notes        MissionNote[]
+  statusEvents CrewStatusEvent[]
+}
+
+model MissionLocation {
+  id        String       @id @default(cuid())
+  missionId String
+  kind      LocationKind
+  label     String       @default("")
+  address   String
+  lat       Float
+  lng       Float
+  notes     String       @default("")
+  sortOrder Int          @default(0)
+
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId])
+}
+
+// ─── Roster ─────────────────────────────────────────────────────────
+
+model Personnel {
+  id       String  @id @default(cuid())
+  name     String
+  callsign String  @default("")
+  /// e.g. "Paramedic", "Medical Director"
+  title    String  @default("")
+  agency   String  @default("")
+  phone    String  @default("")
+  email    String  @default("")
+  isActive Boolean @default(true)
+  /// Linked login account — auto-matched by email; drives notifications.
+  userId   String? @unique
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  assignments MissionAssignment[]
+}
+
+model Vehicle {
+  id         String  @id @default(cuid())
+  /// e.g. "M-1", "TacMed 2"
+  designator String  @unique
+  type       String  @default("")
+  plate      String  @default("")
+  notes      String  @default("")
+  isActive   Boolean @default(true)
+
+  missionVehicles MissionVehicle[]
+  crews           MissionCrew[]
+}
+
+model MissionCrew {
+  id        String  @id @default(cuid())
+  missionId String
+  name      String
+  vehicleId String?
+  notes     String  @default("")
+  sortOrder Int     @default(0)
+
+  mission Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  members MissionAssignment[]
+  statusEvents CrewStatusEvent[]
+
+  @@index([missionId])
+}
+
+// ─── Crew status tracking ───────────────────────────────────────────
+
+/// Admin-configurable status vocabulary (En Route, On Scene, …).
+model CrewStatusType {
+  id        String  @id @default(cuid())
+  name      String  @unique
+  /// Short label used in notifications and the timeline, e.g. "ENRT".
+  shortCode String
+  color     String  @default("#8b9dc3")
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  events CrewStatusEvent[]
+}
+
+/// Append-only log; a crew's current status is its latest event.
+model CrewStatusEvent {
+  id           String   @id @default(cuid())
+  missionId    String
+  crewId       String
+  statusTypeId String
+  note         String   @default("")
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  mission    Mission        @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  crew       MissionCrew    @relation(fields: [crewId], references: [id], onDelete: Cascade)
+  statusType CrewStatusType @relation(fields: [statusTypeId], references: [id])
+  createdBy  User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([missionId, createdAt])
+  @@index([crewId, createdAt])
+}
+
+// ─── Web Push ───────────────────────────────────────────────────────
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String   @default("")
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model MissionAssignment {
+  id          String  @id @default(cuid())
+  missionId   String
+  personnelId String
+  crewId      String?
+  /// Role on this mission, e.g. "Crew Lead", "Medic".
+  role        String  @default("")
+
+  mission   Mission      @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  personnel Personnel    @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  crew      MissionCrew? @relation(fields: [crewId], references: [id], onDelete: SetNull)
+
+  @@unique([missionId, personnelId])
+}
+
+model MissionVehicle {
+  missionId String
+  vehicleId String
+  notes     String @default("")
+
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@id([missionId, vehicleId])
+}
+
+// ─── Generated notes ────────────────────────────────────────────────
+
+model MissionNote {
+  id            String   @id @default(cuid())
+  missionId     String
+  content       String
+  /// Routing parameters used, for traceability (origin, departure, etc.)
+  params        Json
+  generatedById String?
+  generatedAt   DateTime @default(now())
+
+  mission     Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  generatedBy User?   @relation(fields: [generatedById], references: [id], onDelete: SetNull)
+
+  @@index([missionId])
+}

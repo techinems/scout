@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-rubik), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, "SF Mono", monospace;
+
+  /* Ground */
+  --color-bg: #0b0e13;
+  --color-surface: #11151c;
+  --color-surface-2: #171d27;
+  --color-surface-3: #1e2530;
+  --color-edge: #242b38;
+  --color-edge-strong: #323b4b;
+
+  /* Ink */
+  --color-ink: #e9ecf1;
+  --color-ink-muted: #96a0b0;
+  --color-ink-faint: #5f6979;
+
+  /* Accent — rescue orange */
+  --color-accent: #ff5d38;
+  --color-accent-soft: #ff5d3826;
+  --color-accent-bright: #ff7a5c;
+
+  /* Info */
+  --color-info: #4c8dff;
+  --color-info-soft: #4c8dff21;
+
+  /* Status — reserved, never decorative */
+  --color-good: #34b077;
+  --color-good-soft: #34b0771f;
+  --color-warn: #f5a623;
+  --color-warn-soft: #f5a6231f;
+  --color-danger: #e5484d;
+  --color-danger-soft: #e5484d21;
+
+  --radius-card: 6px;
+  --radius-control: 4px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+/* Subtle tactical grid — dots at 24px pitch, fading toward edges */
+.grid-ground {
+  background-image: radial-gradient(circle, #232b3a 1px, transparent 1px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 30%, black 30%, transparent 100%);
+}
+
+/* Section label: the small-caps tracked heading used across the app */
+.kicker {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+/* Data values — mono, tabular */
+.data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbars that match the surface */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge-strong) transparent;
+}
+
+/* Focus ring */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+}
