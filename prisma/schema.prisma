@@ -123,6 +123,8 @@ model Mission {
   /// Tentative go-time; drives traffic-aware routing.
   goTime      DateTime?
   briefing    String        @default("")
+  /// Radio channels / comms plan, one per line (for the med plan).
+  comms       String        @default("")
 
   /// Local EMS service covering the mission area (for the med plan).
   localEmsName          String @default("")

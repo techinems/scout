@@ -102,6 +102,14 @@ export async function setUserRoles(userId: string, roleIds: string[]): Promise<A
 const SAMPLE_CONTEXT = {
   missionName: "Sample Mission",
   missionTown: "Sampletown",
+  planTitle: "Sampletown",
+  goDate: "30 Jul 26",
+  crewNames: "Alpha/Bravo",
+  crewSummary: "Alpha: Sample/Doe\nBravo: Roe",
+  hasMedcon: true,
+  medcon: [{ name: "Dr. Sample", phone: "(555) 555-0197" }],
+  targetAddress: "123 Main St, Sampletown, MA 01000",
+  comms: "STOP1e\nSOPS3",
   goTime: "Thu, Jul 30, 06:00 ET",
   trafficNote: "drive from TGT @ go-time",
   generatedAt: "Jul 28, 2026, 09:00 ET",
@@ -111,12 +119,17 @@ const SAMPLE_CONTEXT = {
   facilities: [
     {
       categoryLabel: "TRAUMA",
+      categoryName: "Trauma Center",
+      isAero: false,
       name: "Sample Medical Center",
       extras: "Lvl I",
       address: "1 Hospital Way",
       eta: "12 min / 4.0 mi",
+      etaShort: "12 min",
       phone: "(555) 555-0100",
       air: "",
+      airMin: "",
+      lzLabel: "",
       lzCoords: "",
     },
   ],
@@ -131,6 +144,7 @@ const SAMPLE_CONTEXT = {
   localEmsPocPhone: "(555) 555-0198",
   localEmsStaging: "10 Fire Rd, Sampletown",
   localEmsStagingEta: "6 min / 2.1 mi to TGT",
+  localEmsStagingEtaShort: "6 min",
 };
 
 export async function saveMedplanTemplate(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {

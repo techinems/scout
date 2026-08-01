@@ -5,6 +5,7 @@
  *   {{var}}                 — insert a value ("" when missing)
  *   {{#key}}...{{/key}}     — array: repeat per item · truthy: render once ·
  *                             falsy/empty: skip
+ *   {{^key}}...{{/key}}     — inverted: render only when key is falsy/empty
  *   # Heading / ## Heading  — markdown-style headings (start of line)
  *   **bold**                — bold inline
  *
@@ -19,14 +20,14 @@ export type TemplateContext = { [key: string]: TemplateValue };
 type Node =
   | { type: "text"; value: string }
   | { type: "var"; name: string }
-  | { type: "section"; name: string; children: Node[] };
+  | { type: "section"; name: string; inverted: boolean; children: Node[] };
 
-const TAG = /\{\{(#|\/)?\s*([\w.]+)\s*\}\}/g;
+const TAG = /\{\{(#|\/|\^)?\s*([\w.]+)\s*\}\}/g;
 
 function parse(template: string): Node[] {
   // Trim tag-only lines so {{#section}} / {{/section}} markers don't leave
   // blank lines behind (mustache "standalone tag" behavior).
-  const cleaned = template.replace(/^[ \t]*\{\{[#/][\w.]+\}\}[ \t]*\r?\n/gm, (m) => m.trim());
+  const cleaned = template.replace(/^[ \t]*\{\{[#/^][\w.]+\}\}[ \t]*\r?\n/gm, (m) => m.trim());
 
   const root: Node[] = [];
   const stack: { name: string; children: Node[] }[] = [{ name: "", children: root }];
@@ -40,9 +41,14 @@ function parse(template: string): Node[] {
     }
     last = start + raw.length;
 
-    if (sigil === "#") {
+    if (sigil === "#" || sigil === "^") {
       const section = { name, children: [] as Node[] };
-      stack[stack.length - 1].children.push({ type: "section", name, children: section.children });
+      stack[stack.length - 1].children.push({
+        type: "section",
+        name,
+        inverted: sigil === "^",
+        children: section.children,
+      });
       stack.push(section);
     } else if (sigil === "/") {
       if (stack.length < 2 || stack[stack.length - 1].name !== name) {
@@ -79,12 +85,15 @@ function renderNodes(nodes: Node[], contexts: TemplateContext[]): string {
       out += value === null || value === undefined || value === false ? "" : String(value);
     } else {
       const value = lookup(node.name, contexts);
-      if (Array.isArray(value)) {
+      const empty = value === null || value === undefined || value === false || value === "" || (Array.isArray(value) && value.length === 0);
+      if (node.inverted) {
+        if (empty) out += renderNodes(node.children, contexts);
+      } else if (Array.isArray(value)) {
         for (const item of value) {
           const child = typeof item === "object" && item !== null && !Array.isArray(item) ? (item as TemplateContext) : { ".": item };
           out += renderNodes(node.children, [...contexts, child]);
         }
-      } else if (value && value !== "") {
+      } else if (!empty) {
         // Truthy scalar/object: render once (scalars stay addressable by name).
         const child = typeof value === "object" ? (value as TemplateContext) : {};
         out += renderNodes(node.children, [...contexts, child]);

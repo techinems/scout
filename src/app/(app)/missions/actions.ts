@@ -47,6 +47,7 @@ const basicsSchema = z.object({
   status: z.enum(STATUSES),
   goTime: z.string().optional(),
   briefing: z.string().trim().default(""),
+  comms: z.string().trim().default(""),
 });
 
 export async function updateMissionBasics(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -68,6 +69,7 @@ export async function updateMissionBasics(_prev: ActionResult | null, formData: 
       status: parsed.data.status,
       goTime,
       briefing: parsed.data.briefing,
+      comms: parsed.data.comms,
     },
   });
 

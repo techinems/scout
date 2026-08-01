@@ -5,7 +5,15 @@ import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
 import { driveMatrix, haversineMeters } from "@/lib/google/routes";
 import { appConfig } from "@/lib/app-config";
-import { formatGoTime, formatDateTime, metersToMiles, minutesToHuman, toDDM, townFromAddress } from "@/lib/format";
+import {
+  formatGoDate,
+  formatGoTime,
+  formatDateTime,
+  metersToMiles,
+  minutesToHuman,
+  toDDM,
+  townFromAddress,
+} from "@/lib/format";
 import { renderTemplate, type TemplateContext } from "@/lib/medplan/template";
 import { DEFAULT_MEDPLAN_TEMPLATE, MEDPLAN_TEMPLATE_KEY } from "@/lib/medplan/default-template";
 
@@ -122,9 +130,18 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
         `~${Math.ceil(totalMin)} min (${aero.launchMinutes} launch + ${Math.ceil(flightMin)} flight @ ` +
         `${aero.cruiseSpeedKnots} kt + ${aero.landingBufferMinutes} land) to ${lzs[0] ? "LZ" : "TGT"}`;
     }
+    let airMin = "";
+    if (category.isAeromedical) {
+      const flightMiles =
+        haversineMeters({ lat: f.lat, lng: f.lng }, { lat: flightDest.lat, lng: flightDest.lng }) / 1609.344;
+      const flightMin = (flightMiles / cruiseMph) * 60;
+      airMin = `${Math.ceil(aero.launchMinutes + flightMin + aero.landingBufferMinutes)} min`;
+    }
     return [
       {
         categoryLabel: category.noteLabel,
+        categoryName: category.name,
+        isAero: category.isAeromedical,
         name: f.name,
         extras: [f.traumaLevel && `Lvl ${f.traumaLevel}`, f.hasHelipad && "helipad"].filter(Boolean).join(", "),
         address: f.address,
@@ -132,8 +149,12 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
           hit.durationMin !== null
             ? `${minutesToHuman(hit.durationMin)} / ${metersToMiles(hit.distanceMeters)}`
             : `${metersToMiles(hit.distanceMeters)} direct`,
+        etaShort:
+          hit.durationMin !== null ? minutesToHuman(hit.durationMin) : `${metersToMiles(hit.distanceMeters)} direct`,
         phone: f.phone,
         air,
+        airMin,
+        lzLabel: category.isAeromedical && lzs[0] ? lzs[0].label || lzs[0].address : "",
         lzCoords: category.isAeromedical && lzs[0] ? toDDM(lzs[0].lat, lzs[0].lng) : "",
       },
     ];
@@ -157,6 +178,12 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
   // Town: from the meet location, falling back to the target.
   const meet = mission.locations.find((l) => l.kind === "MEET");
   const missionTown = townFromAddress(meet?.address ?? "") || townFromAddress(target.address);
+
+  // Medical control: assignments whose role/title reads as medical control.
+  const MEDCON = /med(ical)?[ -]?(con(trol)?\b|director)/i;
+  const medcon = mission.assignments
+    .filter((a) => MEDCON.test(a.role) || MEDCON.test(a.personnel.title))
+    .map((a) => ({ name: a.personnel.name, phone: a.personnel.phone }));
 
   // Local EMS staging ETA to target, traffic-aware when routable.
   let localEmsStagingEta = "";
@@ -185,9 +212,28 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
       mission.localEmsStagingAddress,
   );
 
+  // Crew line: member last names. One crew → "Smith/Greene";
+  // several → "Alpha: Smith/Greene" per line. Unstaffed crews are skipped.
+  const lastName = (name: string) => name.trim().split(/\s+/).pop() ?? name;
+  const staffed = mission.crews.filter((c) => c.members.length > 0);
+  const crewSummary =
+    staffed.length === 1
+      ? staffed[0].members.map((m) => lastName(m.personnel.name)).join("/")
+      : staffed
+          .map((c) => `${c.name}: ${c.members.map((m) => lastName(m.personnel.name)).join("/")}`)
+          .join("\n");
+
   const context: TemplateContext = {
     missionName: mission.name,
     missionTown,
+    planTitle: missionTown || mission.name,
+    goDate: formatGoDate(mission.goTime),
+    crewNames: mission.crews.map((c) => c.name).join("/"),
+    crewSummary,
+    hasMedcon: medcon.length > 0,
+    medcon,
+    targetAddress: target.address,
+    comms: mission.comms,
     goTime: `${formatGoTime(mission.goTime)} ET`,
     trafficNote: matrix.trafficAware ? "drive from TGT @ go-time" : "straight-line — routing unavailable",
     generatedAt: `${formatDateTime(new Date())} ET`,
@@ -206,6 +252,7 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
     localEmsPocPhone: mission.localEmsPocPhone,
     localEmsStaging: mission.localEmsStagingAddress,
     localEmsStagingEta,
+    localEmsStagingEtaShort: localEmsStagingEta.split(" / ")[0].replace(" direct to TGT", " direct"),
   };
 
   const setting = await db.appSetting.findUnique({ where: { key: MEDPLAN_TEMPLATE_KEY } });

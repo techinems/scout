@@ -106,6 +106,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
                   status: mission.status,
                   goTimeLocal: toDatetimeLocalValue(mission.goTime),
                   briefing: mission.briefing,
+                  comms: mission.comms,
                 }}
               />
             </Modal>

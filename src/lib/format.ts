@@ -27,6 +27,19 @@ export function formatDateTime(date: Date): string {
   }).format(date);
 }
 
+/** Compact military-style date, e.g. "28 Jul 26". */
+export function formatGoDate(date: Date | null): string {
+  if (!date) return "Date TBD";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TZ,
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("day")} ${get("month")} ${get("year")}`;
+}
+
 /** Short clock time, e.g. "14:32". */
 export function formatClock(date: Date): string {
   return new Intl.DateTimeFormat("en-US", {

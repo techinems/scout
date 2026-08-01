@@ -30,7 +30,7 @@ import {
 export function MissionBasicsForm({
   mission,
 }: {
-  mission: { id: string; name: string; status: MissionStatus; goTimeLocal: string; briefing: string };
+  mission: { id: string; name: string; status: MissionStatus; goTimeLocal: string; briefing: string; comms: string };
 }) {
   const { close } = useModal();
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(updateMissionBasics, null);
@@ -61,6 +61,9 @@ export function MissionBasicsForm({
       </div>
       <Field label="Briefing notes">
         <Textarea name="briefing" defaultValue={mission.briefing} />
+      </Field>
+      <Field label="Comms / channels (one per line, shown in the med plan)">
+        <Textarea name="comms" defaultValue={mission.comms} placeholder={"STOP1e\nSOPS3"} className="data" />
       </Field>
       {state && !state.ok && <p className="text-[13px] text-danger">{state.error}</p>}
       <div className="flex items-center justify-between pt-1">
