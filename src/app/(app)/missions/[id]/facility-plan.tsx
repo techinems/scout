@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { IconCopy, IconRoute, IconShare } from "@/components/icons";
 import { toHtml, toPlainText } from "@/lib/medplan/template";
+import { copyRichText } from "@/lib/clipboard";
 import { generateFacilityPlan } from "./facility-actions";
 
 export function FacilityPlan({
@@ -23,6 +24,7 @@ export function FacilityPlan({
   const [note, setNote] = useState<string | null>(latestNote?.content ?? null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const plain = note ? toPlainText(note) : null;
@@ -38,26 +40,26 @@ export function FacilityPlan({
   /**
    * Copy both flavors: text/html carries real <h1>/<h2> headings, which iOS
    * (Notes, Mail, …) maps onto its Title/Heading paragraph styles on paste;
-   * text/plain is the fallback for plain-text targets.
+   * text/plain is the fallback for plain-text targets. copyRichText walks a
+   * compatibility chain (async clipboard → execCommand → plain writeText) so
+   * it also works over plain http, where the modern clipboard API is
+   * unavailable.
    */
   const copy = async () => {
     if (!note || !plain) return;
-    try {
-      const item = new ClipboardItem({
-        "text/html": new Blob([toHtml(note)], { type: "text/html" }),
-        "text/plain": new Blob([plain], { type: "text/plain" }),
-      });
-      await navigator.clipboard.write([item]);
-    } catch {
-      // Older browsers without ClipboardItem: plain text only.
-      await navigator.clipboard.writeText(plain);
+    setCopyError(null);
+    const ok = await copyRichText(toHtml(note), plain);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } else {
+      setCopyError("Copy failed — your browser blocked clipboard access. Select the text and copy manually.");
     }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
   };
 
   const share = async () => {
     if (!plain) return;
+    setCopyError(null);
     if (navigator.share) {
       try {
         await navigator.share({ text: plain });
@@ -116,6 +118,7 @@ export function FacilityPlan({
                 <IconShare /> Share to Notes
               </Button>
             </div>
+            {copyError && <p className="mt-2 text-[13px] text-danger">{copyError}</p>}
             <p className="mt-2 text-[11px] text-ink-faint">
               Copy keeps heading styles when pasting into iOS Notes; the share sheet sends plain text.
             </p>
