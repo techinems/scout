@@ -101,6 +101,7 @@ export async function setUserRoles(userId: string, roleIds: string[]): Promise<A
 /** Sample data used to validate a template before saving. */
 const SAMPLE_CONTEXT = {
   missionName: "Sample Mission",
+  missionTown: "Sampletown",
   goTime: "Thu, Jul 30, 06:00 ET",
   trafficNote: "drive from TGT @ go-time",
   generatedAt: "Jul 28, 2026, 09:00 ET",
@@ -123,6 +124,13 @@ const SAMPLE_CONTEXT = {
   crews: [{ name: "Alpha", vehicle: "M-1", members: "A. Sample (Medic)" }],
   unassigned: "",
   looseVehicles: "",
+  hasLocalEms: true,
+  localEmsName: "Sampletown EMS",
+  localEmsDispatchPhone: "(555) 555-0199",
+  localEmsPocName: "Chief Sample",
+  localEmsPocPhone: "(555) 555-0198",
+  localEmsStaging: "10 Fire Rd, Sampletown",
+  localEmsStagingEta: "6 min / 2.1 mi to TGT",
 };
 
 export async function saveMedplanTemplate(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {

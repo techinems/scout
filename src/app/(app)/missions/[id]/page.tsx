@@ -24,6 +24,7 @@ import {
   MissionVehicleRemove,
 } from "./mission-forms";
 import { FacilityPlan } from "./facility-plan";
+import { LocalEmsCard } from "./local-ems";
 
 export const metadata: Metadata = { title: "Mission" };
 
@@ -335,7 +336,20 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
             )}
           </Card>
 
-          {/* Facility plan */}
+          {/* Local EMS */}
+          <LocalEmsCard
+            canEdit={canEdit}
+            data={{
+              missionId: mission.id,
+              localEmsName: mission.localEmsName,
+              localEmsDispatchPhone: mission.localEmsDispatchPhone,
+              localEmsPocName: mission.localEmsPocName,
+              localEmsPocPhone: mission.localEmsPocPhone,
+              stagingAddress: mission.localEmsStagingAddress,
+            }}
+          />
+
+          {/* Med plan */}
           <FacilityPlan
             missionId={mission.id}
             target={target ? { label: target.label, address: target.address } : null}

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
 import { driveMatrix, haversineMeters } from "@/lib/google/routes";
 import { appConfig } from "@/lib/app-config";
-import { formatGoTime, formatDateTime, metersToMiles, minutesToHuman, toDDM } from "@/lib/format";
+import { formatGoTime, formatDateTime, metersToMiles, minutesToHuman, toDDM, townFromAddress } from "@/lib/format";
 import { renderTemplate, type TemplateContext } from "@/lib/medplan/template";
 import { DEFAULT_MEDPLAN_TEMPLATE, MEDPLAN_TEMPLATE_KEY } from "@/lib/medplan/default-template";
 
@@ -154,8 +154,40 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
   const pool = mission.assignments.filter((a) => !a.crewId);
   const looseVehicles = mission.vehicles.filter((mv) => !mission.crews.some((c) => c.vehicleId === mv.vehicleId));
 
+  // Town: from the meet location, falling back to the target.
+  const meet = mission.locations.find((l) => l.kind === "MEET");
+  const missionTown = townFromAddress(meet?.address ?? "") || townFromAddress(target.address);
+
+  // Local EMS staging ETA to target, traffic-aware when routable.
+  let localEmsStagingEta = "";
+  if (mission.localEmsStagingLat !== null && mission.localEmsStagingLng !== null) {
+    try {
+      const stagingMatrix = await driveMatrix(
+        { lat: mission.localEmsStagingLat, lng: mission.localEmsStagingLng },
+        [{ lat: target.lat, lng: target.lng }],
+        mission.goTime,
+      );
+      const leg = stagingMatrix.legs[0];
+      if (leg) {
+        localEmsStagingEta =
+          leg.durationMin !== null
+            ? `${minutesToHuman(leg.durationMin)} / ${metersToMiles(leg.distanceMeters)} to TGT`
+            : `${metersToMiles(leg.distanceMeters)} direct to TGT`;
+      }
+    } catch (err) {
+      console.error("Local EMS staging ETA failed:", err);
+    }
+  }
+  const hasLocalEms = Boolean(
+    mission.localEmsName ||
+      mission.localEmsDispatchPhone ||
+      mission.localEmsPocName ||
+      mission.localEmsStagingAddress,
+  );
+
   const context: TemplateContext = {
     missionName: mission.name,
+    missionTown,
     goTime: `${formatGoTime(mission.goTime)} ET`,
     trafficNote: matrix.trafficAware ? "drive from TGT @ go-time" : "straight-line — routing unavailable",
     generatedAt: `${formatDateTime(new Date())} ET`,
@@ -167,6 +199,13 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
     crews,
     unassigned: pool.map((a) => a.personnel.name).join(", "),
     looseVehicles: looseVehicles.map((mv) => mv.vehicle.designator).join(", "),
+    hasLocalEms,
+    localEmsName: mission.localEmsName,
+    localEmsDispatchPhone: mission.localEmsDispatchPhone,
+    localEmsPocName: mission.localEmsPocName,
+    localEmsPocPhone: mission.localEmsPocPhone,
+    localEmsStaging: mission.localEmsStagingAddress,
+    localEmsStagingEta,
   };
 
   const setting = await db.appSetting.findUnique({ where: { key: MEDPLAN_TEMPLATE_KEY } });

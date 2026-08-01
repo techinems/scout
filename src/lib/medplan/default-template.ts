@@ -6,6 +6,9 @@
 export const MEDPLAN_TEMPLATE_KEY = "medplan.template";
 
 export const DEFAULT_MEDPLAN_TEMPLATE = `# Med Plan — {{missionName}}
+{{#missionTown}}
+Town: {{missionTown}}
+{{/missionTown}}
 Go-time: {{goTime}}
 
 {{#hasLocations}}
@@ -33,6 +36,22 @@ Go-time: {{goTime}}
 {{/lzCoords}}
 {{/facilities}}
 
+{{#hasLocalEms}}
+## Local EMS
+{{#localEmsName}}
+Service: {{localEmsName}}
+{{/localEmsName}}
+{{#localEmsDispatchPhone}}
+Dispatch: {{localEmsDispatchPhone}}
+{{/localEmsDispatchPhone}}
+{{#localEmsPocName}}
+POC: {{localEmsPocName}}{{#localEmsPocPhone}} · {{localEmsPocPhone}}{{/localEmsPocPhone}}
+{{/localEmsPocName}}
+{{#localEmsStaging}}
+Staging: {{localEmsStaging}}{{#localEmsStagingEta}} · {{localEmsStagingEta}}{{/localEmsStagingEta}}
+{{/localEmsStaging}}
+{{/hasLocalEms}}
+
 {{#hasCrews}}
 ## Crews
 {{#crews}}
@@ -55,6 +74,7 @@ export const TEMPLATE_VARIABLES: { section: string; items: { name: string; doc: 
     section: "Top level",
     items: [
       { name: "missionName", doc: "Mission name" },
+      { name: "missionTown", doc: "Town parsed from the meet location (target as fallback)" },
       { name: "goTime", doc: "Formatted go-time (with timezone)" },
       { name: "trafficNote", doc: '"drive from TGT @ go-time" or the straight-line fallback note' },
       { name: "generatedAt", doc: "Timestamp of generation" },
@@ -62,6 +82,17 @@ export const TEMPLATE_VARIABLES: { section: string; items: { name: string; doc: 
       { name: "hasLocations / hasCrews", doc: "Booleans for wrapping optional sections" },
       { name: "unassigned", doc: "Comma-separated personnel not in a crew" },
       { name: "looseVehicles", doc: "Vehicles not attached to a crew" },
+    ],
+  },
+  {
+    section: "Local EMS (wrap in {{#hasLocalEms}} … {{/hasLocalEms}})",
+    items: [
+      { name: "localEmsName", doc: "Local EMS service name" },
+      { name: "localEmsDispatchPhone", doc: "Dispatch phone number" },
+      { name: "localEmsPocName", doc: "Point of contact name" },
+      { name: "localEmsPocPhone", doc: "Point of contact phone" },
+      { name: "localEmsStaging", doc: "Staging location address" },
+      { name: "localEmsStagingEta", doc: "Drive time from staging to target (at go-time)" },
     ],
   },
   {

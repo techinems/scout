@@ -100,6 +100,67 @@ export async function deleteMission(missionId: string): Promise<ActionResult> {
   redirect("/missions");
 }
 
+// ─── Local EMS ──────────────────────────────────────────────────────
+
+const localEmsSchema = z.object({
+  missionId: z.string().min(1),
+  localEmsName: z.string().trim().default(""),
+  localEmsDispatchPhone: z.string().trim().default(""),
+  localEmsPocName: z.string().trim().default(""),
+  localEmsPocPhone: z.string().trim().default(""),
+  stagingAddress: z.string().trim().default(""),
+  manualLat: z.string().optional(),
+  manualLng: z.string().optional(),
+});
+
+export async function saveLocalEms(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  try {
+    await assertPermission("mission.edit");
+  } catch {
+    return { ok: false, error: "You don't have permission to edit missions." };
+  }
+
+  const parsed = localEmsSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input" };
+  const data = parsed.data;
+
+  const mission = await db.mission.findUnique({ where: { id: data.missionId } });
+  if (!mission) return { ok: false, error: "Mission not found." };
+
+  // Resolve staging coordinates only when the address changed or manual
+  // coords were supplied; clearing the address clears the coordinates.
+  let stagingLat: number | null = mission.localEmsStagingLat;
+  let stagingLng: number | null = mission.localEmsStagingLng;
+  let stagingAddress = data.stagingAddress;
+  const hasManual = Boolean(data.manualLat?.trim() && data.manualLng?.trim());
+  if (!stagingAddress && !hasManual) {
+    stagingLat = null;
+    stagingLng = null;
+  } else if (stagingAddress !== mission.localEmsStagingAddress || hasManual) {
+    const loc = await resolveLocation({ address: stagingAddress, manualLat: data.manualLat, manualLng: data.manualLng });
+    if (!loc.ok) return loc;
+    stagingLat = loc.lat;
+    stagingLng = loc.lng;
+    stagingAddress = loc.address || stagingAddress || toDDM(loc.lat, loc.lng);
+  }
+
+  await db.mission.update({
+    where: { id: data.missionId },
+    data: {
+      localEmsName: data.localEmsName,
+      localEmsDispatchPhone: data.localEmsDispatchPhone,
+      localEmsPocName: data.localEmsPocName,
+      localEmsPocPhone: data.localEmsPocPhone,
+      localEmsStagingAddress: stagingAddress,
+      localEmsStagingLat: stagingLat,
+      localEmsStagingLng: stagingLng,
+    },
+  });
+
+  revalidatePath(`/missions/${data.missionId}`);
+  return { ok: true };
+}
+
 // ─── Locations ──────────────────────────────────────────────────────
 
 const KINDS_WITH_LZ = ["MEET", "BRIEF", "STAGING", "TARGET", "LZ", "OTHER"] as const;

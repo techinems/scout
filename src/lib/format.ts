@@ -97,6 +97,26 @@ export function metersToMiles(meters: number): string {
 }
 
 /**
+ * Best-effort town extraction from a formatted US address like
+ * "455 Main St, Worcester, MA 01608(, USA)". Returns "" when the address has
+ * no recognizable state/ZIP component (freeform descriptions).
+ */
+export function townFromAddress(address: string): string {
+  const parts = address
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  if (parts.length && /^(USA|United States)$/i.test(parts[parts.length - 1])) parts.pop();
+  if (parts.length < 2) return "";
+  const last = parts[parts.length - 1];
+  // "MA 01608", "MA", or a bare ZIP mark the state component.
+  if (/^[A-Z]{2}(\s+\d{5}(-\d{4})?)?$/.test(last) || /^\d{5}(-\d{4})?$/.test(last)) {
+    return parts[parts.length - 2];
+  }
+  return "";
+}
+
+/**
  * Degrees decimal minutes, 3 dp on minutes — the format aeromedical crews
  * expect for LZ coordinates. e.g. `42°15.756'N 071°48.137'W`
  */

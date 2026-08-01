@@ -123,6 +123,17 @@ model Mission {
   /// Tentative go-time; drives traffic-aware routing.
   goTime      DateTime?
   briefing    String        @default("")
+
+  /// Local EMS service covering the mission area (for the med plan).
+  localEmsName          String @default("")
+  localEmsDispatchPhone String @default("")
+  localEmsPocName       String @default("")
+  localEmsPocPhone      String @default("")
+  /// Where the local EMS unit stages; ETA to target is computed at
+  /// med plan generation.
+  localEmsStagingAddress String @default("")
+  localEmsStagingLat     Float?
+  localEmsStagingLng     Float?
   createdById String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
