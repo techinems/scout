@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { appConfig } from "@/lib/app-config";
-import { toDDM } from "@/lib/format";
+import { toDDM } from "@/lib/geo";
 
 declare global {
   interface Window {
@@ -31,10 +30,13 @@ function loadMapsJs(apiKey: string): Promise<void> {
  */
 export function MapPicker({
   apiKey,
+  initialView,
   value,
   onChange,
 }: {
   apiKey: string;
+  /** Where the map opens before a point has been picked. */
+  initialView: { lat: number; lng: number; zoom: number };
   value: { lat: number; lng: number } | null;
   onChange: (point: { lat: number; lng: number }) => void;
 }) {
@@ -53,10 +55,10 @@ export function MapPicker({
     loadMapsJs(apiKey)
       .then(() => {
         if (cancelled || !containerRef.current || mapRef.current) return;
-        const center = value ?? appConfig.mapCenter;
+        const center = value ?? { lat: initialView.lat, lng: initialView.lng };
         const map = new window.google!.maps.Map(containerRef.current, {
           center,
-          zoom: value ? 15 : appConfig.mapCenter.zoom,
+          zoom: value ? 15 : initialView.zoom,
           mapTypeId: "hybrid",
           streetViewControl: false,
           fullscreenControl: false,

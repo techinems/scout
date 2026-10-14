@@ -1,6 +1,9 @@
 import type { MetadataRoute } from "next";
 import { appConfig } from "@/lib/app-config";
 
+// Built per request so APP_NAME / APP_DESCRIPTION from the server env apply.
+export const dynamic = "force-dynamic";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: appConfig.appName,

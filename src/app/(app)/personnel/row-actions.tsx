@@ -7,13 +7,19 @@ import { IconTrash } from "@/components/icons";
 import { deletePersonnel, setPersonnelActive } from "./actions";
 import { PersonnelForm, type PersonnelFormData } from "./personnel-form";
 
-export function PersonnelRowActions({ person }: { person: PersonnelFormData & { isActive: boolean } }) {
+export function PersonnelRowActions({
+  person,
+  agencies,
+}: {
+  person: PersonnelFormData & { isActive: boolean };
+  agencies: string[];
+}) {
   const [pending, startTransition] = useTransition();
 
   return (
     <div className="flex items-center justify-end gap-1.5">
       <Modal title="Edit personnel" trigger={<Button variant="ghost" size="sm">Edit</Button>}>
-        <PersonnelForm initial={person} />
+        <PersonnelForm initial={person} agencies={agencies} />
       </Modal>
       <Button
         variant="ghost"

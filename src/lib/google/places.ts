@@ -12,10 +12,11 @@ export function placesEnabled(): boolean {
 }
 
 /**
- * Address/place suggestions from the Places API (New). Biased toward the
- * configured map center when it's zoomed in enough to mean a region rather
- * than a whole country. The session token groups keystrokes with the final
- * details lookup so Google bills them as one session.
+ * Address/place suggestions from the Places API (New). Biased toward (or
+ * restricted to) the configured addressBias box; without one, biased toward
+ * the map center when it's zoomed in enough to mean a region rather than a
+ * whole country. The session token groups keystrokes with the final details
+ * lookup so Google bills them as one session.
  */
 export async function autocomplete(input: string, sessionToken: string): Promise<PlaceSuggestion[]> {
   const key = process.env.GOOGLE_MAPS_API_KEY;
@@ -26,9 +27,18 @@ export async function autocomplete(input: string, sessionToken: string): Promise
     sessionToken,
     includedRegionCodes: appConfig.addressRegionCodes,
   };
-  const { lat, lng, zoom } = appConfig.mapCenter;
-  if (zoom >= 8) {
-    body.locationBias = { circle: { center: { latitude: lat, longitude: lng }, radius: 50000 } };
+  const box = appConfig.addressBias;
+  if (box && box.south < box.north && box.west < box.east) {
+    const rectangle = {
+      low: { latitude: box.south, longitude: box.west },
+      high: { latitude: box.north, longitude: box.east },
+    };
+    body[box.restrict ? "locationRestriction" : "locationBias"] = { rectangle };
+  } else {
+    const { lat, lng, zoom } = appConfig.mapCenter;
+    if (zoom >= 8) {
+      body.locationBias = { circle: { center: { latitude: lat, longitude: lng }, radius: 50000 } };
+    }
   }
 
   const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {

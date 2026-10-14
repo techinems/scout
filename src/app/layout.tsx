@@ -3,6 +3,10 @@ import { JetBrains_Mono, Rubik } from "next/font/google";
 import { appConfig } from "@/lib/app-config";
 import "./globals.css";
 
+// Render per request so branding env vars set on the server apply everywhere,
+// including pages Next.js would otherwise pre-render at build time.
+export const dynamic = "force-dynamic";
+
 const rubik = Rubik({
   variable: "--font-rubik",
   subsets: ["latin"],

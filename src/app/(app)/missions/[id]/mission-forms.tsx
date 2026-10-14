@@ -120,6 +120,8 @@ export function StatusSelect({ missionId, status }: { missionId: string; status:
 
 // ─── Locations ──────────────────────────────────────────────────────
 
+export type MapView = { lat: number; lng: number; zoom: number };
+
 export type LocationData = {
   id: string;
   kind: LocationKind;
@@ -132,10 +134,12 @@ export function LocationForm({
   missionId,
   initial,
   mapsApiKey,
+  mapView,
 }: {
   missionId: string;
   initial?: LocationData & { lat?: number; lng?: number };
   mapsApiKey: string | null;
+  mapView: MapView;
 }) {
   const { close } = useModal();
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(saveLocation, null);
@@ -178,7 +182,7 @@ export function LocationForm({
 
       {isLz &&
         (mapsApiKey ? (
-          <MapPicker apiKey={mapsApiKey} value={picked} onChange={setPicked} />
+          <MapPicker apiKey={mapsApiKey} initialView={mapView} value={picked} onChange={setPicked} />
         ) : (
           <p className="rounded-(--radius-control) border border-warn/40 bg-warn-soft px-3 py-2 text-[12px] text-warn">
             No Maps key configured — enter the LZ coordinates manually below.
@@ -234,16 +238,18 @@ export function LocationRowActions({
   missionId,
   location,
   mapsApiKey,
+  mapView,
 }: {
   missionId: string;
   location: LocationData & { lat: number; lng: number };
   mapsApiKey: string | null;
+  mapView: MapView;
 }) {
   const [pending, startTransition] = useTransition();
   return (
     <div className="flex items-center gap-1">
       <Modal title="Edit location" trigger={<Button variant="ghost" size="sm">Edit</Button>}>
-        <LocationForm missionId={missionId} initial={location} mapsApiKey={mapsApiKey} />
+        <LocationForm missionId={missionId} initial={location} mapsApiKey={mapsApiKey} mapView={mapView} />
       </Modal>
       <Button
         variant="ghost"

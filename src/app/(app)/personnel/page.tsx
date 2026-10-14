@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/current-user";
 import { db } from "@/lib/db";
+import { appConfig } from "@/lib/app-config";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +36,7 @@ export default async function PersonnelPage() {
               </Button>
             }
           >
-            <PersonnelForm />
+            <PersonnelForm agencies={appConfig.agencies} />
           </Modal>
         )}
       </header>
@@ -84,6 +85,7 @@ export default async function PersonnelPage() {
                   {canEdit && (
                     <td className="whitespace-nowrap px-3 py-3 text-right">
                       <PersonnelRowActions
+                        agencies={appConfig.agencies}
                         person={{
                           id: p.id,
                           name: p.name,

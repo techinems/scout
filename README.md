@@ -32,10 +32,24 @@ API**.
 
 ## Branding / localization
 
-Everything agency-specific lives in **`app.config.json`** (app name, unit
-line, agencies, timezone, map center, aeromedical response assumptions).
-Edit it **before building the image** — values are baked in at build time.
-The open-source repo intentionally ships generic values.
+Every agency-specific setting (app name, unit line, agencies, timezone, map
+center, address lookup region, aeromedical response assumptions) is an
+optional environment variable read at runtime, so the same image works for any
+deployment: set them in Coolify (or `.env` locally) and restart. Unset
+variables fall back to generic defaults. `.env.example` lists them all.
+
+For example, to bias address suggestions toward Massachusetts and open the LZ
+map over Worcester:
+
+```bash
+MAP_CENTER="42.27,-71.80,9"                    # lat,lng,zoom
+ADDRESS_BIAS="41.18,-73.51,42.89,-69.86"       # south,west,north,east
+ADDRESS_BIAS_RESTRICT="false"
+```
+
+`ADDRESS_BIAS` ranks addresses inside the box first; set
+`ADDRESS_BIAS_RESTRICT="true"` to suggest only addresses inside it. Malformed
+values are ignored with a warning in the server log.
 
 ## Authentication & authorization
 

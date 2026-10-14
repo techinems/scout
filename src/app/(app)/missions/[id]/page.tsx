@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth/current-user";
 import { db } from "@/lib/db";
+import { appConfig } from "@/lib/app-config";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -130,7 +131,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
               action={
                 canEdit && (
                   <Modal title="Add location" trigger={<Button variant="ghost" size="sm"><IconPlus /> Add</Button>}>
-                    <LocationForm missionId={mission.id} mapsApiKey={mapsApiKey} />
+                    <LocationForm missionId={mission.id} mapsApiKey={mapsApiKey} mapView={appConfig.mapCenter} />
                   </Modal>
                 )
               }
@@ -169,6 +170,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
                           lng: l.lng,
                         }}
                         mapsApiKey={mapsApiKey}
+                        mapView={appConfig.mapCenter}
                       />
                     )}
                   </li>

@@ -4,7 +4,6 @@ import { useActionState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
 import { useModal } from "@/components/ui/modal";
-import { appConfig } from "@/lib/app-config";
 import { PhoneInput } from "@/components/phone-input";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 import { savePersonnel } from "./actions";
@@ -19,7 +18,10 @@ export type PersonnelFormData = {
   email: string;
 };
 
-export function PersonnelForm({ initial }: { initial?: PersonnelFormData }) {
+export function PersonnelForm({ initial, agencies }: { initial?: PersonnelFormData; agencies: string[] }) {
+  // Keep a stored agency selectable even if it was later removed from the list.
+  const agencyOptions =
+    initial?.agency && !agencies.includes(initial.agency) ? [...agencies, initial.agency] : agencies;
   const { close } = useModal();
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(savePersonnel, null);
 
@@ -45,8 +47,8 @@ export function PersonnelForm({ initial }: { initial?: PersonnelFormData }) {
           <Input name="title" defaultValue={initial?.title} placeholder="Paramedic" />
         </Field>
         <Field label="Agency">
-          <Select name="agency" defaultValue={initial?.agency ?? appConfig.agencies[0]}>
-            {appConfig.agencies.map((a) => (
+          <Select name="agency" defaultValue={initial?.agency ?? agencyOptions[0]}>
+            {agencyOptions.map((a) => (
               <option key={a} value={a}>
                 {a}
               </option>
