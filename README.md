@@ -14,7 +14,7 @@ Built with Next.js (App Router), Prisma 7 + PostgreSQL, and Tailwind v4.
 
 ```bash
 cp .env.example .env          # defaults work out of the box
-docker compose up -d          # local Postgres on :5433
+docker compose up -d          # local Postgres on :5434
 npm ci
 npx prisma migrate deploy
 SEED_DEMO_DATA=true npx tsx prisma/seed.ts
