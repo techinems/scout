@@ -7,6 +7,7 @@
   "agencies": ["EMS", "Police", "Other"],
   "timezone": "America/New_York",
   "mapCenter": { "lat": 39.83, "lng": -98.58, "zoom": 4 },
+  "addressRegionCodes": ["us"],
   "aeromedical": { "launchMinutes": 10, "cruiseSpeedKnots": 130, "landingBufferMinutes": 3 },
   "loginNotice": "Mission support portal. Access is restricted to credentialed team members.",
   "footerNotice": "Authorized use only. Activity may be logged."

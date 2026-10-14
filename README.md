@@ -23,8 +23,12 @@ npm run dev
 
 With `AUTH_DISABLED="true"` in `.env` you are signed in as a synthetic admin —
 no Keycloak needed. Without a `GOOGLE_MAPS_API_KEY`, geocoding falls back to
-manual coordinate entry and the med plan uses clearly-labeled straight-line
-distances.
+manual coordinate entry, address fields lose autocomplete (they stay plain
+text inputs), and the med plan uses clearly-labeled straight-line distances.
+
+The server key needs the **Geocoding API**, **Routes API** and **Places API
+(New)** enabled; the browser key (LZ map picker) needs the **Maps JavaScript
+API**.
 
 ## Branding / localization
 

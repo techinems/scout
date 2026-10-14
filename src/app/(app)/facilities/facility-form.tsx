@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useModal } from "@/components/ui/modal";
+import { AddressInput } from "@/components/address-input";
 import { saveFacility, type ActionResult } from "./actions";
 
 export type CategoryOption = { id: string; name: string };
@@ -58,7 +59,7 @@ export function FacilityForm({
       </div>
 
       <Field label="Address">
-        <Input name="address" defaultValue={initial?.address} placeholder="100 Hospital Dr, Anytown, ST" required />
+        <AddressInput name="address" defaultValue={initial?.address} placeholder="100 Hospital Dr, Anytown, ST" required />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">

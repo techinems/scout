@@ -10,6 +10,7 @@ import type { ActionResult } from "@/app/(app)/facilities/actions";
 import { MISSION_STATUS_LABEL, MISSION_STATUSES } from "@/lib/mission-status";
 import type { MissionStatus, LocationKind } from "@/generated/prisma/enums";
 import { MapPicker } from "@/components/map-picker";
+import { AddressInput } from "@/components/address-input";
 import { LOCATION_KIND_LABEL, LOCATION_KINDS } from "./location-kind";
 import {
   addMissionVehicle,
@@ -185,7 +186,7 @@ export function LocationForm({
         ))}
 
       <Field label={isLz ? "Address / description (optional)" : "Address"}>
-        <Input
+        <AddressInput
           name="address"
           defaultValue={initial?.address}
           placeholder={isLz ? "HS football field, School St…" : "123 Main St, Anytown, ST"}

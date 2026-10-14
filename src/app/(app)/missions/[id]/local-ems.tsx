@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { Modal, useModal } from "@/components/ui/modal";
 import { Card, CardHeader } from "@/components/ui/card";
+import { AddressInput } from "@/components/address-input";
 import { IconCross } from "@/components/icons";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 import { saveLocalEms } from "../actions";
@@ -100,7 +101,7 @@ function LocalEmsForm({ data }: { data: LocalEmsData }) {
       </div>
 
       <Field label="Staging location">
-        <Input
+        <AddressInput
           name="stagingAddress"
           defaultValue={data.stagingAddress}
           placeholder="Station 2, 10 Fire Rd — ETA to target computes at generation"
