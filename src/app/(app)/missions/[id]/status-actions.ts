@@ -5,7 +5,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
 import { missionUserIds, notifyUsers } from "@/lib/push";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, timezoneShort } from "@/lib/format";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 
 const schema = z.object({
@@ -51,7 +51,7 @@ export async function postCrewStatus(
   const userIds = await missionUserIds(missionId, user.id);
   await notifyUsers(userIds, {
     title: `${crew.name}: ${statusType.name}`,
-    body: `${crew.mission.name}${note ? ` — ${note}` : ""} · ${formatDateTime(event.createdAt)} ET`,
+    body: `${crew.mission.name}${note ? ` — ${note}` : ""} · ${formatDateTime(event.createdAt)} ${timezoneShort()}`,
     url: `/missions/${missionId}`,
   });
 

@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
 import { formatPhone } from "@/lib/phone";
 import { resolveLocation } from "@/lib/google/geocode";
-import { parseEtLocal, toDDM } from "@/lib/format";
+import { parseLocalDateTime, toDDM } from "@/lib/format";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 
 const STATUSES = ["DRAFT", "PLANNED", "ACTIVE", "COMPLETE", "CANCELLED"] as const;
@@ -15,7 +15,7 @@ const STATUSES = ["DRAFT", "PLANNED", "ACTIVE", "COMPLETE", "CANCELLED"] as cons
 function parseGoTime(raw: FormDataEntryValue | null): Date | null | { error: string } {
   const value = typeof raw === "string" ? raw.trim() : "";
   if (!value) return null;
-  const parsed = parseEtLocal(value);
+  const parsed = parseLocalDateTime(value);
   return parsed ?? { error: "Go-time is not a valid date/time." };
 }
 

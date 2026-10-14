@@ -9,7 +9,8 @@ import {
   formatGoDate,
   formatGoTime,
   formatDateTime,
-  metersToMiles,
+  formatDistance,
+  timezoneShort,
   minutesToHuman,
   toDDM,
   townFromAddress,
@@ -147,10 +148,10 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
         address: f.address,
         eta:
           hit.durationMin !== null
-            ? `${minutesToHuman(hit.durationMin)} / ${metersToMiles(hit.distanceMeters)}`
-            : `${metersToMiles(hit.distanceMeters)} direct`,
+            ? `${minutesToHuman(hit.durationMin)} / ${formatDistance(hit.distanceMeters)}`
+            : `${formatDistance(hit.distanceMeters)} direct`,
         etaShort:
-          hit.durationMin !== null ? minutesToHuman(hit.durationMin) : `${metersToMiles(hit.distanceMeters)} direct`,
+          hit.durationMin !== null ? minutesToHuman(hit.durationMin) : `${formatDistance(hit.distanceMeters)} direct`,
         phone: f.phone,
         air,
         airMin,
@@ -179,10 +180,16 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
   const meet = mission.locations.find((l) => l.kind === "MEET");
   const missionTown = townFromAddress(meet?.address ?? "") || townFromAddress(target.address);
 
-  // Medical control: assignments whose role/title reads as medical control.
-  const MEDCON = /med(ical)?[ -]?(con(trol)?\b|director)/i;
+  // Medical control: assignments whose mission role or roster title contains
+  // one of MEDCON_ROLE_KEYWORDS as whole words. Spaces in a keyword also match
+  // hyphens or nothing, so "med con" matches "Med-Con" and "medcon".
+  const medconPatterns = appConfig.medconKeywords.map((keyword) => {
+    const words = keyword.split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return new RegExp(`\\b${words.join("[\\s-]*")}\\b`, "i");
+  });
+  const isMedcon = (text: string) => medconPatterns.some((p) => p.test(text));
   const medcon = mission.assignments
-    .filter((a) => MEDCON.test(a.role) || MEDCON.test(a.personnel.title))
+    .filter((a) => isMedcon(a.role) || isMedcon(a.personnel.title))
     .map((a) => ({ name: a.personnel.name, phone: a.personnel.phone }));
 
   // Local EMS staging ETA to target, traffic-aware when routable.
@@ -198,8 +205,8 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
       if (leg) {
         localEmsStagingEta =
           leg.durationMin !== null
-            ? `${minutesToHuman(leg.durationMin)} / ${metersToMiles(leg.distanceMeters)} to TGT`
-            : `${metersToMiles(leg.distanceMeters)} direct to TGT`;
+            ? `${minutesToHuman(leg.durationMin)} / ${formatDistance(leg.distanceMeters)} to TGT`
+            : `${formatDistance(leg.distanceMeters)} direct to TGT`;
       }
     } catch (err) {
       console.error("Local EMS staging ETA failed:", err);
@@ -234,9 +241,9 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
     medcon,
     targetAddress: target.address,
     comms: mission.comms,
-    goTime: `${formatGoTime(mission.goTime)} ET`,
+    goTime: `${formatGoTime(mission.goTime)} ${timezoneShort()}`,
     trafficNote: matrix.trafficAware ? "drive from TGT @ go-time" : "straight-line — routing unavailable",
-    generatedAt: `${formatDateTime(new Date())} ET`,
+    generatedAt: `${formatDateTime(new Date())} ${timezoneShort()}`,
     generatedBy: user.name,
     hasLocations: locations.length > 0,
     locations,

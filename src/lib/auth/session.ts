@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { authConfig } from "./config";
 
 export const SESSION_COOKIE = "scout_session";
-const SESSION_TTL_SECONDS = 60 * 60 * 12; // 12h — one operational period
 
 export type SessionPayload = {
   sub: string;
@@ -23,7 +22,7 @@ export async function sealSession(payload: SessionPayload): Promise<string> {
   return new EncryptJWT({ ...payload })
     .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
     .setIssuedAt()
-    .setExpirationTime(`${SESSION_TTL_SECONDS}s`)
+    .setExpirationTime(`${authConfig.sessionTtlSeconds}s`)
     .encrypt(await sessionKey());
 }
 
@@ -55,6 +54,6 @@ export function sessionCookieOptions() {
     sameSite: "lax" as const,
     secure: authConfig.appUrl.startsWith("https://"),
     path: "/",
-    maxAge: SESSION_TTL_SECONDS,
+    maxAge: authConfig.sessionTtlSeconds,
   };
 }

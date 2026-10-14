@@ -36,7 +36,7 @@ export function MapPicker({
 }: {
   apiKey: string;
   /** Where the map opens before a point has been picked. */
-  initialView: { lat: number; lng: number; zoom: number };
+  initialView: { lat: number; lng: number; zoom: number; type: string };
   value: { lat: number; lng: number } | null;
   onChange: (point: { lat: number; lng: number }) => void;
 }) {
@@ -59,7 +59,7 @@ export function MapPicker({
         const map = new window.google!.maps.Map(containerRef.current, {
           center,
           zoom: value ? 15 : initialView.zoom,
-          mapTypeId: "hybrid",
+          mapTypeId: initialView.type,
           streetViewControl: false,
           fullscreenControl: false,
           clickableIcons: false,

@@ -1,6 +1,8 @@
 import { appConfig } from "@/lib/app-config";
 
 const TZ = appConfig.timezone;
+// Display times only; datetime-local values and offset math stay 24h.
+const HOUR12 = appConfig.clockFormat === "12h";
 
 export function formatGoTime(date: Date | null): string {
   if (!date) return "Go-time TBD";
@@ -11,7 +13,7 @@ export function formatGoTime(date: Date | null): string {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: HOUR12,
   }).format(date);
 }
 
@@ -23,7 +25,7 @@ export function formatDateTime(date: Date): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: HOUR12,
   }).format(date);
 }
 
@@ -46,7 +48,7 @@ export function formatClock(date: Date): string {
     timeZone: TZ,
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: HOUR12,
   }).format(date);
 }
 
@@ -67,22 +69,22 @@ export function toDatetimeLocalValue(date: Date | null): string {
 }
 
 /**
- * Parse a datetime-local string ("YYYY-MM-DDTHH:mm") as Eastern wall time
- * into a UTC Date. Two-pass offset resolution handles DST boundaries.
+ * Parse a datetime-local string ("YYYY-MM-DDTHH:mm") as wall time in the
+ * configured timezone into a UTC Date. Two-pass offset resolution handles DST boundaries.
  */
-export function parseEtLocal(value: string): Date | null {
+export function parseLocalDateTime(value: string): Date | null {
   const m = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
   if (!m) return null;
   const [, y, mo, d, h, mi] = m.map(Number);
   const wallUtc = Date.UTC(y, mo - 1, d, h, mi);
   let instant = wallUtc;
   for (let i = 0; i < 2; i++) {
-    instant = wallUtc - etOffsetMs(new Date(instant));
+    instant = wallUtc - tzOffsetMs(new Date(instant));
   }
   return new Date(instant);
 }
 
-function etOffsetMs(date: Date): number {
+function tzOffsetMs(date: Date): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: TZ,
     year: "numeric",
@@ -105,8 +107,28 @@ export function minutesToHuman(min: number): string {
   return `${h} h ${m.toString().padStart(2, "0")} min`;
 }
 
-export function metersToMiles(meters: number): string {
-  return `${(meters / 1609.344).toFixed(1)} mi`;
+/** Distance in the configured units (DISTANCE_UNITS), e.g. "4.2 mi". */
+export function formatDistance(meters: number): string {
+  return appConfig.distanceUnits === "km"
+    ? `${(meters / 1000).toFixed(1)} km`
+    : `${(meters / 1609.344).toFixed(1)} mi`;
+}
+
+/** Short generic zone name for the configured timezone, e.g. "ET", "CT". */
+export function timezoneShort(): string {
+  return zoneName("shortGeneric") ?? TZ;
+}
+
+/** Long generic zone name, e.g. "Eastern Time". */
+export function timezoneLong(): string {
+  return zoneName("longGeneric") ?? TZ;
+}
+
+function zoneName(style: "shortGeneric" | "longGeneric"): string | null {
+  const part = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: style })
+    .formatToParts(new Date())
+    .find((p) => p.type === "timeZoneName");
+  return part?.value ?? null;
 }
 
 /**

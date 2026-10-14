@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { IconChevronRight, IconPlus } from "@/components/icons";
 import { MISSION_STATUS_LABEL, MISSION_STATUS_TONE, MISSION_STATUSES } from "@/lib/mission-status";
-import { formatGoTime } from "@/lib/format";
+import { formatGoTime, timezoneLong } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { MissionCreateForm } from "./mission-create-form";
 
@@ -56,7 +56,7 @@ export default async function MissionsPage({
               </Button>
             }
           >
-            <MissionCreateForm />
+            <MissionCreateForm timezoneLabel={timezoneLong()} />
           </Modal>
         )}
       </header>

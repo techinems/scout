@@ -38,7 +38,16 @@ export type AppConfig = {
   aeromedical: { launchMinutes: number; cruiseSpeedKnots: number; landingBufferMinutes: number };
   loginNotice: string;
   footerNotice: string;
+  /** LZ picker base map. */
+  mapType: MapType;
+  clockFormat: "24h" | "12h";
+  distanceUnits: "mi" | "km";
+  /** Phrases that mark a mission role / roster title as medical control. */
+  medconKeywords: string[];
 };
+
+export type MapType = "hybrid" | "satellite" | "roadmap" | "terrain";
+const MAP_TYPES: MapType[] = ["hybrid", "satellite", "roadmap", "terrain"];
 
 const defaults: AppConfig = {
   appName: "Scout",
@@ -53,6 +62,10 @@ const defaults: AppConfig = {
   aeromedical: { launchMinutes: 10, cruiseSpeedKnots: 130, landingBufferMinutes: 3 },
   loginNotice: "Mission support portal. Access is restricted to credentialed team members.",
   footerNotice: "Authorized use only. Activity may be logged.",
+  mapType: "hybrid",
+  clockFormat: "24h",
+  distanceUnits: "mi",
+  medconKeywords: ["med con", "med control", "medical control", "medical director", "med director"],
 };
 
 function raw(name: string): string | undefined {
@@ -93,6 +106,16 @@ function numbers(name: string, count: number): number[] | null {
   return null;
 }
 
+/** One of a fixed set of values (case-insensitive). */
+function choice<T extends string>(name: string, options: readonly T[], fallback: T): T {
+  const value = raw(name)?.toLowerCase();
+  if (value === undefined) return fallback;
+  const match = options.find((o) => o === value);
+  if (match) return match;
+  console.warn(`[config] ${name} must be one of ${options.join(", ")} ("${value}"); using ${fallback}`);
+  return fallback;
+}
+
 function bool(name: string, fallback: boolean): boolean {
   const value = raw(name)?.toLowerCase();
   if (value === undefined) return fallback;
@@ -130,6 +153,10 @@ function load(): AppConfig {
     },
     loginNotice: str("APP_LOGIN_NOTICE", defaults.loginNotice),
     footerNotice: str("APP_FOOTER_NOTICE", defaults.footerNotice),
+    mapType: choice("MAP_TYPE", MAP_TYPES, defaults.mapType),
+    clockFormat: choice("CLOCK_FORMAT", ["24h", "12h"] as const, defaults.clockFormat),
+    distanceUnits: choice("DISTANCE_UNITS", ["mi", "km"] as const, defaults.distanceUnits),
+    medconKeywords: list("MEDCON_ROLE_KEYWORDS", defaults.medconKeywords),
   };
 }
 

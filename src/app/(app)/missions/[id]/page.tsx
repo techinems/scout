@@ -10,7 +10,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
 import { IconClock, IconPin, IconPlus, IconUsers } from "@/components/icons";
 import { MISSION_STATUS_LABEL, MISSION_STATUS_TONE } from "@/lib/mission-status";
-import { formatClock, formatGoTime, toDatetimeLocalValue } from "@/lib/format";
+import { formatClock, formatGoTime, timezoneLong, toDatetimeLocalValue } from "@/lib/format";
 import { CrewStatusButton } from "./crew-status";
 import { LOCATION_KIND_LABEL, LOCATION_KIND_TONE } from "./location-kind";
 import {
@@ -101,6 +101,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
           {canEdit && (
             <Modal title="Edit mission" trigger={<Button variant="outline" size="sm">Edit</Button>}>
               <MissionBasicsForm
+                timezoneLabel={timezoneLong()}
                 mission={{
                   id: mission.id,
                   name: mission.name,
@@ -131,7 +132,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
               action={
                 canEdit && (
                   <Modal title="Add location" trigger={<Button variant="ghost" size="sm"><IconPlus /> Add</Button>}>
-                    <LocationForm missionId={mission.id} mapsApiKey={mapsApiKey} mapView={appConfig.mapCenter} />
+                    <LocationForm missionId={mission.id} mapsApiKey={mapsApiKey} mapView={{ ...appConfig.mapCenter, type: appConfig.mapType }} />
                   </Modal>
                 )
               }
@@ -170,7 +171,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
                           lng: l.lng,
                         }}
                         mapsApiKey={mapsApiKey}
-                        mapView={appConfig.mapCenter}
+                        mapView={{ ...appConfig.mapCenter, type: appConfig.mapType }}
                       />
                     )}
                   </li>

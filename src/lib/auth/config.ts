@@ -14,6 +14,18 @@ export const authConfig = {
   get requiredRole() {
     return process.env.KEYCLOAK_REQUIRED_ROLE ?? "scout-access";
   },
+  get scopes() {
+    return process.env.KEYCLOAK_SCOPES?.trim() || "openid email profile";
+  },
+  /** Login lifetime in seconds (SESSION_TTL_HOURS, default 12 — one operational period). */
+  get sessionTtlSeconds() {
+    const hours = Number(process.env.SESSION_TTL_HOURS);
+    return Math.round((Number.isFinite(hours) && hours >= 1 ? hours : 12) * 3600);
+  },
+  /** Scout role given on login to users who hold no roles yet; null = none. */
+  get defaultRole(): string | null {
+    return process.env.DEFAULT_ROLE?.trim() || null;
+  },
   get appUrl() {
     return process.env.APP_URL ?? "http://localhost:3000";
   },

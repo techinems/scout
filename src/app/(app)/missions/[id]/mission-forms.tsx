@@ -30,8 +30,10 @@ import {
 
 export function MissionBasicsForm({
   mission,
+  timezoneLabel,
 }: {
   mission: { id: string; name: string; status: MissionStatus; goTimeLocal: string; briefing: string; comms: string };
+  timezoneLabel: string;
 }) {
   const { close } = useModal();
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(updateMissionBasics, null);
@@ -56,7 +58,7 @@ export function MissionBasicsForm({
             ))}
           </Select>
         </Field>
-        <Field label="Go-time (Eastern)">
+        <Field label={`Go-time (${timezoneLabel})`}>
           <Input name="goTime" type="datetime-local" defaultValue={mission.goTimeLocal} className="data" />
         </Field>
       </div>
@@ -120,7 +122,7 @@ export function StatusSelect({ missionId, status }: { missionId: string; status:
 
 // ─── Locations ──────────────────────────────────────────────────────
 
-export type MapView = { lat: number; lng: number; zoom: number };
+export type MapView = { lat: number; lng: number; zoom: number; type: string };
 
 export type LocationData = {
   id: string;

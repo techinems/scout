@@ -7,7 +7,7 @@ import { useModal } from "@/components/ui/modal";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 import { createMission } from "./actions";
 
-export function MissionCreateForm() {
+export function MissionCreateForm({ timezoneLabel }: { timezoneLabel: string }) {
   const { close } = useModal();
   // createMission redirects on success, so we only ever see errors here.
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(createMission, null);
@@ -18,7 +18,7 @@ export function MissionCreateForm() {
         <Input name="name" placeholder="Warrant service — Main St" required autoFocus />
       </Field>
 
-      <Field label="Tentative go-time (Eastern)">
+      <Field label={`Tentative go-time (${timezoneLabel})`}>
         <Input name="goTime" type="datetime-local" className="data" />
       </Field>
 
