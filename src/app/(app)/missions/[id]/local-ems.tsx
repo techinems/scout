@@ -6,6 +6,7 @@ import { Field, Input } from "@/components/ui/field";
 import { Modal, useModal } from "@/components/ui/modal";
 import { Card, CardHeader } from "@/components/ui/card";
 import { AddressInput } from "@/components/address-input";
+import { PhoneInput } from "@/components/phone-input";
 import { IconCross } from "@/components/icons";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 import { saveLocalEms } from "../actions";
@@ -87,7 +88,7 @@ function LocalEmsForm({ data }: { data: LocalEmsData }) {
           <Input name="localEmsName" defaultValue={data.localEmsName} placeholder="Springfield EMS" />
         </Field>
         <Field label="Dispatch phone">
-          <Input name="localEmsDispatchPhone" defaultValue={data.localEmsDispatchPhone} placeholder="(555) 555-0100" />
+          <PhoneInput name="localEmsDispatchPhone" defaultValue={data.localEmsDispatchPhone} />
         </Field>
       </div>
 
@@ -96,7 +97,7 @@ function LocalEmsForm({ data }: { data: LocalEmsData }) {
           <Input name="localEmsPocName" defaultValue={data.localEmsPocName} placeholder="Deputy Chief Smith" />
         </Field>
         <Field label="POC phone">
-          <Input name="localEmsPocPhone" defaultValue={data.localEmsPocPhone} placeholder="(555) 555-0101" />
+          <PhoneInput name="localEmsPocPhone" defaultValue={data.localEmsPocPhone} placeholder="(555) 555-0101" />
         </Field>
       </div>
 

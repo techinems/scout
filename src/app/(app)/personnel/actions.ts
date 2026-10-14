@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
+import { formatPhone } from "@/lib/phone";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 
 const schema = z.object({
@@ -12,7 +13,7 @@ const schema = z.object({
   callsign: z.string().trim().default(""),
   title: z.string().trim().default(""),
   agency: z.string().trim().default(""),
-  phone: z.string().trim().default(""),
+  phone: z.string().trim().default("").transform(formatPhone),
   email: z.string().trim().default(""),
 });
 

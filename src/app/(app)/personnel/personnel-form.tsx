@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/field";
 import { useModal } from "@/components/ui/modal";
 import { appConfig } from "@/lib/app-config";
+import { PhoneInput } from "@/components/phone-input";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 import { savePersonnel } from "./actions";
 
@@ -56,7 +57,7 @@ export function PersonnelForm({ initial }: { initial?: PersonnelFormData }) {
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Phone">
-          <Input name="phone" defaultValue={initial?.phone} placeholder="(508) 555-0142" />
+          <PhoneInput name="phone" defaultValue={initial?.phone} />
         </Field>
         <Field label="Email">
           <Input name="email" type="email" defaultValue={initial?.email} placeholder="jreyes@example.org" />

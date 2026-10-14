@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { useModal } from "@/components/ui/modal";
 import { AddressInput } from "@/components/address-input";
+import { PhoneInput } from "@/components/phone-input";
 import { saveFacility, type ActionResult } from "./actions";
 
 export type CategoryOption = { id: string; name: string };
@@ -54,7 +55,7 @@ export function FacilityForm({
           </Select>
         </Field>
         <Field label="Phone">
-          <Input name="phone" defaultValue={initial?.phone} placeholder="(508) 555-0100" />
+          <PhoneInput name="phone" defaultValue={initial?.phone} />
         </Field>
       </div>
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
+import { formatPhone } from "@/lib/phone";
 import { resolveLocation } from "@/lib/google/geocode";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -13,7 +14,7 @@ const facilitySchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   categoryId: z.string().min(1, "Category is required"),
   address: z.string().trim().min(1, "Address is required"),
-  phone: z.string().trim().default(""),
+  phone: z.string().trim().default("").transform(formatPhone),
   traumaLevel: z.string().trim().default(""),
   hasHelipad: z.coerce.boolean().default(false),
   notes: z.string().trim().default(""),

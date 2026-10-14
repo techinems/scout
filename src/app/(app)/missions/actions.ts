@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
+import { formatPhone } from "@/lib/phone";
 import { resolveLocation } from "@/lib/google/geocode";
 import { parseEtLocal, toDDM } from "@/lib/format";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
@@ -107,9 +108,9 @@ export async function deleteMission(missionId: string): Promise<ActionResult> {
 const localEmsSchema = z.object({
   missionId: z.string().min(1),
   localEmsName: z.string().trim().default(""),
-  localEmsDispatchPhone: z.string().trim().default(""),
+  localEmsDispatchPhone: z.string().trim().default("").transform(formatPhone),
   localEmsPocName: z.string().trim().default(""),
-  localEmsPocPhone: z.string().trim().default(""),
+  localEmsPocPhone: z.string().trim().default("").transform(formatPhone),
   stagingAddress: z.string().trim().default(""),
   manualLat: z.string().optional(),
   manualLng: z.string().optional(),

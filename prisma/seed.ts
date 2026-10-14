@@ -7,6 +7,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { ALL_PERMISSIONS } from "../src/lib/rbac/permissions";
+import { formatPhone } from "../src/lib/phone";
 
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -111,6 +112,45 @@ const FACILITIES: {
   },
 ];
 
+/**
+ * Bring stored phone numbers into the canonical (xxx) xxx-xxxx format.
+ * Saves already normalize, so this only catches rows written before that
+ * existed or by other paths. Writes only rows whose value changes.
+ */
+async function normalizePhones() {
+  let changed = 0;
+
+  for (const f of await db.facility.findMany({ select: { id: true, phone: true } })) {
+    const phone = formatPhone(f.phone);
+    if (phone !== f.phone) {
+      await db.facility.update({ where: { id: f.id }, data: { phone } });
+      changed++;
+    }
+  }
+
+  for (const p of await db.personnel.findMany({ select: { id: true, phone: true } })) {
+    const phone = formatPhone(p.phone);
+    if (phone !== p.phone) {
+      await db.personnel.update({ where: { id: p.id }, data: { phone } });
+      changed++;
+    }
+  }
+
+  const missions = await db.mission.findMany({
+    select: { id: true, localEmsDispatchPhone: true, localEmsPocPhone: true },
+  });
+  for (const m of missions) {
+    const localEmsDispatchPhone = formatPhone(m.localEmsDispatchPhone);
+    const localEmsPocPhone = formatPhone(m.localEmsPocPhone);
+    if (localEmsDispatchPhone !== m.localEmsDispatchPhone || localEmsPocPhone !== m.localEmsPocPhone) {
+      await db.mission.update({ where: { id: m.id }, data: { localEmsDispatchPhone, localEmsPocPhone } });
+      changed++;
+    }
+  }
+
+  if (changed > 0) console.log(`Normalized phone numbers on ${changed} record(s).`);
+}
+
 async function main() {
   console.log("Seeding roles…");
   await upsertRole("Administrator", "Full access to everything, including role management.", ALL_PERMISSIONS);
@@ -149,6 +189,8 @@ async function main() {
       create: { ...c, isSystem: true },
     });
   }
+
+  await normalizePhones();
 
   if (process.env.SEED_DEMO_DATA !== "true") {
     console.log("Skipping demo facilities (set SEED_DEMO_DATA=true to include them).");
