@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requirePermission } from "@/lib/auth/current-user";
 import { db } from "@/lib/db";
+import { displayAddress } from "@/lib/address";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -27,7 +28,7 @@ export default async function FacilitiesPage() {
 
   return (
     <div className="space-y-8">
-      <header className="flex items-end justify-between gap-4">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="kicker">Receiving & support</p>
           <h1 className="mt-1 text-2xl font-semibold">Facilities</h1>
@@ -84,7 +85,7 @@ export default async function FacilitiesPage() {
                           {f.name}
                           {!f.isActive && <span className="ml-2 text-[11px] text-ink-faint">(inactive)</span>}
                         </p>
-                        <p className="mt-0.5 text-[13px] text-ink-faint">{f.address}</p>
+                        <p className="mt-0.5 text-[13px] text-ink-faint">{displayAddress(f.address)}</p>
                       </td>
                       <td className="hidden px-3 py-3 md:table-cell">
                         <div className="flex flex-wrap justify-end gap-1.5">

@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { assertPermission } from "@/lib/auth/current-user";
 import { driveMatrix, haversineMeters } from "@/lib/google/routes";
 import { appConfig } from "@/lib/app-config";
+import { isMedconText } from "@/lib/medcon";
+import { displayAddress } from "@/lib/address";
 import {
   formatGoDate,
   formatGoTime,
@@ -42,6 +44,7 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
       crews: { orderBy: { sortOrder: "asc" }, include: { vehicle: true, members: { include: { personnel: true } } } },
       assignments: { include: { personnel: true } },
       vehicles: { include: { vehicle: true } },
+      medicalDirectors: { include: { personnel: true }, orderBy: { createdAt: "asc" } },
     },
   });
   if (!mission) return { ok: false, error: "Mission not found." };
@@ -107,7 +110,7 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
       .map((l) => ({
         kindLabel: kindLabel[kind],
         label: l.label,
-        address: l.address,
+        address: displayAddress(l.address),
         notes: l.notes,
         ddm: kind === "LZ" ? toDDM(l.lat, l.lng) : "",
       })),
@@ -145,7 +148,7 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
         isAero: category.isAeromedical,
         name: f.name,
         extras: [f.traumaLevel && `Lvl ${f.traumaLevel}`, f.hasHelipad && "helipad"].filter(Boolean).join(", "),
-        address: f.address,
+        address: displayAddress(f.address),
         eta:
           hit.durationMin !== null
             ? `${minutesToHuman(hit.durationMin)} / ${formatDistance(hit.distanceMeters)}`
@@ -155,7 +158,7 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
         phone: f.phone,
         air,
         airMin,
-        lzLabel: category.isAeromedical && lzs[0] ? lzs[0].label || lzs[0].address : "",
+        lzLabel: category.isAeromedical && lzs[0] ? lzs[0].label || displayAddress(lzs[0].address) : "",
         lzCoords: category.isAeromedical && lzs[0] ? toDDM(lzs[0].lat, lzs[0].lng) : "",
       },
     ];
@@ -180,17 +183,16 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
   const meet = mission.locations.find((l) => l.kind === "MEET");
   const missionTown = townFromAddress(meet?.address ?? "") || townFromAddress(target.address);
 
-  // Medical control: assignments whose mission role or roster title contains
-  // one of MEDCON_ROLE_KEYWORDS as whole words. Spaces in a keyword also match
-  // hyphens or nothing, so "med con" matches "Med-Con" and "medcon".
-  const medconPatterns = appConfig.medconKeywords.map((keyword) => {
-    const words = keyword.split(/\s+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-    return new RegExp(`\\b${words.join("[\\s-]*")}\\b`, "i");
-  });
-  const isMedcon = (text: string) => medconPatterns.some((p) => p.test(text));
-  const medcon = mission.assignments
-    .filter((a) => isMedcon(a.role) || isMedcon(a.personnel.title))
-    .map((a) => ({ name: a.personnel.name, phone: a.personnel.phone }));
+  // Medical direction: the mission's assigned medical directors, plus any
+  // assignment whose role/title matches MEDCON_ROLE_KEYWORDS (older missions
+  // modeled them as crew members). Deduped by person.
+  const medconPeople = [
+    ...mission.medicalDirectors.map((d) => d.personnel),
+    ...mission.assignments.filter((a) => isMedconText(a.role) || isMedconText(a.personnel.title)).map((a) => a.personnel),
+  ];
+  const medcon = medconPeople
+    .filter((p, i) => medconPeople.findIndex((q) => q.id === p.id) === i)
+    .map((p) => ({ name: p.name, phone: p.phone }));
 
   // Local EMS staging ETA to target, traffic-aware when routable.
   let localEmsStagingEta = "";
@@ -239,7 +241,7 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
     crewSummary,
     hasMedcon: medcon.length > 0,
     medcon,
-    targetAddress: target.address,
+    targetAddress: displayAddress(target.address),
     comms: mission.comms,
     goTime: `${formatGoTime(mission.goTime)} ${timezoneShort()}`,
     trafficNote: matrix.trafficAware ? "drive from TGT @ go-time" : "straight-line — routing unavailable",
@@ -257,7 +259,7 @@ export async function generateFacilityPlan(missionId: string): Promise<GenerateR
     localEmsDispatchPhone: mission.localEmsDispatchPhone,
     localEmsPocName: mission.localEmsPocName,
     localEmsPocPhone: mission.localEmsPocPhone,
-    localEmsStaging: mission.localEmsStagingAddress,
+    localEmsStaging: displayAddress(mission.localEmsStagingAddress),
     localEmsStagingEta,
     localEmsStagingEtaShort: localEmsStagingEta.split(" / ")[0].replace(" direct to TGT", " direct"),
   };

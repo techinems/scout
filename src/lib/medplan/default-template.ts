@@ -13,6 +13,9 @@ Go-time: {{goTime}}
 {{#crewSummary}}
 Crew: {{crewSummary}}
 {{/crewSummary}}
+{{#medcon}}
+Med Director: {{name}}{{#phone}} · {{phone}}{{/phone}}
+{{/medcon}}
 
 {{#hasLocations}}
 ## Locations
@@ -91,7 +94,7 @@ export const TEMPLATE_VARIABLES: { section: string; items: { name: string; doc: 
     ],
   },
   {
-    section: "{{#medcon}} … {{/medcon}} (assignments with a medical-control role/title)",
+    section: "{{#medcon}} … {{/medcon}} (the mission's medical directors)",
     items: [
       { name: "name", doc: "Physician name" },
       { name: "phone", doc: "Phone from the roster" },

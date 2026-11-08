@@ -147,6 +147,7 @@ model Mission {
   vehicles     MissionVehicle[]
   notes        MissionNote[]
   statusEvents CrewStatusEvent[]
+  medicalDirectors MissionMedicalDirector[]
 }
 
 model MissionLocation {
@@ -182,6 +183,7 @@ model Personnel {
   user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   assignments MissionAssignment[]
+  medicalDirections MissionMedicalDirector[]
 }
 
 model Vehicle {
@@ -286,6 +288,19 @@ model MissionAssignment {
   crew      MissionCrew? @relation(fields: [crewId], references: [id], onDelete: SetNull)
 
   @@unique([missionId, personnelId])
+}
+
+/// Physician(s) providing medical direction for a mission. Separate from
+/// crew assignments — they're typically off-scene and reachable by phone.
+model MissionMedicalDirector {
+  missionId   String
+  personnelId String
+  createdAt   DateTime @default(now())
+
+  mission   Mission   @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  personnel Personnel @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+
+  @@id([missionId, personnelId])
 }
 
 model MissionVehicle {

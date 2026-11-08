@@ -27,7 +27,7 @@ manual coordinate entry, address fields lose autocomplete (they stay plain
 text inputs), and the med plan uses clearly-labeled straight-line distances.
 
 The server key needs the **Geocoding API**, **Routes API** and **Places API
-(New)** enabled; the browser key (LZ map picker) needs the **Maps JavaScript
+(New)** enabled; the browser key (LZ / staging map pickers) needs the **Maps JavaScript
 API**.
 
 ## Branding / localization

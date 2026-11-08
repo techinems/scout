@@ -9,15 +9,17 @@ import { IconTrash } from "@/components/icons";
 import type { ActionResult } from "@/app/(app)/facilities/actions";
 import { MISSION_STATUS_LABEL, MISSION_STATUSES } from "@/lib/mission-status";
 import type { MissionStatus, LocationKind } from "@/generated/prisma/enums";
-import { MapPicker } from "@/components/map-picker";
+import { MapPicker, type MapAnchor } from "@/components/map-picker";
 import { AddressInput } from "@/components/address-input";
 import { LOCATION_KIND_LABEL, LOCATION_KINDS } from "./location-kind";
 import {
+  addMedicalDirector,
   addMissionVehicle,
   deleteCrew,
   deleteLocation,
   deleteMission,
   removeAssignment,
+  removeMedicalDirector,
   removeMissionVehicle,
   saveAssignment,
   saveCrew,
@@ -137,11 +139,14 @@ export function LocationForm({
   initial,
   mapsApiKey,
   mapView,
+  anchor,
 }: {
   missionId: string;
   initial?: LocationData & { lat?: number; lng?: number };
   mapsApiKey: string | null;
   mapView: MapView;
+  /** Mission target, shown on the LZ map for context. */
+  anchor?: MapAnchor | null;
 }) {
   const { close } = useModal();
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(saveLocation, null);
@@ -160,7 +165,8 @@ export function LocationForm({
     <form action={formAction} className="space-y-4">
       <input type="hidden" name="missionId" value={missionId} />
       {initial && <input type="hidden" name="id" value={initial.id} />}
-      {isLz && picked && (
+      {/* Manual fields, when open, take over — don't send both. */}
+      {isLz && picked && !showManual && (
         <>
           <input type="hidden" name="manualLat" value={String(picked.lat)} />
           <input type="hidden" name="manualLng" value={String(picked.lng)} />
@@ -184,7 +190,15 @@ export function LocationForm({
 
       {isLz &&
         (mapsApiKey ? (
-          <MapPicker apiKey={mapsApiKey} initialView={mapView} value={picked} onChange={setPicked} />
+          <MapPicker
+            apiKey={mapsApiKey}
+            initialView={mapView}
+            anchor={anchor}
+            value={picked}
+            onChange={setPicked}
+            pinLabel="LZ"
+            hint={anchor ? "Tap the map to drop the LZ — the ring marks the target" : "Tap the map to drop the LZ"}
+          />
         ) : (
           <p className="rounded-(--radius-control) border border-warn/40 bg-warn-soft px-3 py-2 text-[12px] text-warn">
             No Maps key configured — enter the LZ coordinates manually below.
@@ -241,17 +255,25 @@ export function LocationRowActions({
   location,
   mapsApiKey,
   mapView,
+  anchor,
 }: {
   missionId: string;
   location: LocationData & { lat: number; lng: number };
   mapsApiKey: string | null;
   mapView: MapView;
+  anchor?: MapAnchor | null;
 }) {
   const [pending, startTransition] = useTransition();
   return (
     <div className="flex items-center gap-1">
       <Modal title="Edit location" trigger={<Button variant="ghost" size="sm">Edit</Button>}>
-        <LocationForm missionId={missionId} initial={location} mapsApiKey={mapsApiKey} mapView={mapView} />
+        <LocationForm
+          missionId={missionId}
+          initial={location}
+          mapsApiKey={mapsApiKey}
+          mapView={mapView}
+          anchor={anchor}
+        />
       </Modal>
       <Button
         variant="ghost"
@@ -482,5 +504,71 @@ export function MissionVehicleRemove({ missionId, vehicleId }: { missionId: stri
     >
       ✕
     </button>
+  );
+}
+
+// ─── Medical direction ──────────────────────────────────────────────
+
+/**
+ * Roster picker for medical directors. People whose roster title looks like
+ * medical control are grouped first; everyone else stays available.
+ */
+export function MedicalDirectorPicker({
+  missionId,
+  suggested,
+  others,
+}: {
+  missionId: string;
+  suggested: PersonnelOption[];
+  others: PersonnelOption[];
+}) {
+  const [pending, startTransition] = useTransition();
+  if (suggested.length === 0 && others.length === 0) return null;
+  const option = (p: PersonnelOption) => (
+    <option key={p.id} value={p.id}>
+      {p.name}
+      {p.title ? ` — ${p.title}` : ""}
+    </option>
+  );
+  return (
+    <Select
+      defaultValue=""
+      disabled={pending}
+      onChange={(e) => {
+        const id = e.target.value;
+        if (id) startTransition(async () => { await addMedicalDirector(missionId, id); });
+        e.target.value = "";
+      }}
+      className="!h-7 !w-auto text-xs"
+      aria-label="Add medical director"
+    >
+      <option value="" disabled>
+        Add med director…
+      </option>
+      {suggested.length > 0 && others.length > 0 ? (
+        <>
+          <optgroup label="Medical directors">{suggested.map(option)}</optgroup>
+          <optgroup label="Other personnel">{others.map(option)}</optgroup>
+        </>
+      ) : (
+        [...suggested, ...others].map(option)
+      )}
+    </Select>
+  );
+}
+
+export function MedicalDirectorRemove({ missionId, personnelId }: { missionId: string; personnelId: string }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={pending}
+      className="!text-ink-faint hover:!text-danger"
+      onClick={() => startTransition(async () => { await removeMedicalDirector(missionId, personnelId); })}
+      aria-label="Remove medical director"
+    >
+      <IconTrash />
+    </Button>
   );
 }

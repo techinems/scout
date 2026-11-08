@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { IconChevronRight } from "@/components/icons";
 import { MISSION_STATUS_TONE, MISSION_STATUS_LABEL } from "@/lib/mission-status";
 import { formatGoTime } from "@/lib/format";
+import { displayAddress } from "@/lib/address";
 
 export default async function OverviewPage() {
   const user = await requireUser();
@@ -54,7 +55,7 @@ export default async function OverviewPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{m.name}</p>
                   <p className="truncate text-[13px] text-ink-muted">
-                    {m.locations[0]?.address ?? "No target set"}
+                    {m.locations[0] ? displayAddress(m.locations[0].address) : "No target set"}
                   </p>
                 </div>
                 <span className="data text-[13px] text-ink-muted">{formatGoTime(m.goTime)}</span>
@@ -96,7 +97,7 @@ export default async function OverviewPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{m.name}</p>
                       <p className="truncate text-[13px] text-ink-faint">
-                        {m.locations[0]?.address ?? "No target location"}
+                        {m.locations[0] ? displayAddress(m.locations[0].address) : "No target location"}
                       </p>
                     </div>
                     <span className="text-[12px] text-ink-faint">

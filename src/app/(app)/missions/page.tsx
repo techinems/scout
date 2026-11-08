@@ -9,6 +9,7 @@ import { Modal } from "@/components/ui/modal";
 import { IconChevronRight, IconPlus } from "@/components/icons";
 import { MISSION_STATUS_LABEL, MISSION_STATUS_TONE, MISSION_STATUSES } from "@/lib/mission-status";
 import { formatGoTime, timezoneLong } from "@/lib/format";
+import { displayAddress } from "@/lib/address";
 import { cn } from "@/lib/cn";
 import { MissionCreateForm } from "./mission-create-form";
 
@@ -93,7 +94,7 @@ export default async function MissionsPage({
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{m.name}</p>
                   <p className="mt-0.5 truncate text-[13px] text-ink-faint">
-                    {m.locations[0]?.address ?? "No target location set"}
+                    {m.locations[0] ? displayAddress(m.locations[0].address) : "No target location set"}
                   </p>
                 </div>
                 <div className="hidden text-right text-[12px] text-ink-faint sm:block">

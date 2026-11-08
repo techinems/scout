@@ -347,3 +347,32 @@ export async function removeMissionVehicle(missionId: string, vehicleId: string)
   revalidatePath(`/missions/${missionId}`);
   return { ok: true };
 }
+
+// ─── Medical direction ──────────────────────────────────────────────
+
+export async function addMedicalDirector(missionId: string, personnelId: string): Promise<ActionResult> {
+  try {
+    await assertPermission("mission.edit");
+  } catch {
+    return { ok: false, error: "No permission." };
+  }
+  if (!personnelId) return { ok: false, error: "Pick a medical director." };
+  await db.missionMedicalDirector.upsert({
+    where: { missionId_personnelId: { missionId, personnelId } },
+    update: {},
+    create: { missionId, personnelId },
+  });
+  revalidatePath(`/missions/${missionId}`);
+  return { ok: true };
+}
+
+export async function removeMedicalDirector(missionId: string, personnelId: string): Promise<ActionResult> {
+  try {
+    await assertPermission("mission.edit");
+  } catch {
+    return { ok: false, error: "No permission." };
+  }
+  await db.missionMedicalDirector.delete({ where: { missionId_personnelId: { missionId, personnelId } } });
+  revalidatePath(`/missions/${missionId}`);
+  return { ok: true };
+}

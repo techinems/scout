@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
-import { IconCopy, IconRoute, IconShare } from "@/components/icons";
+import { IconCopy, IconRoute } from "@/components/icons";
 import { toHtml, toPlainText } from "@/lib/medplan/template";
 import { copyRichText } from "@/lib/clipboard";
 import { generateFacilityPlan } from "./facility-actions";
@@ -57,20 +57,6 @@ export function FacilityPlan({
     }
   };
 
-  const share = async () => {
-    if (!plain) return;
-    setCopyError(null);
-    if (navigator.share) {
-      try {
-        await navigator.share({ text: plain });
-      } catch {
-        // user dismissed the sheet
-      }
-    } else {
-      await copy();
-    }
-  };
-
   return (
     <Card>
       <CardHeader
@@ -110,18 +96,13 @@ export function FacilityPlan({
             <pre className="data max-h-96 overflow-auto rounded-(--radius-control) border border-edge bg-bg p-3 text-[12px] leading-relaxed whitespace-pre-wrap">
               {plain}
             </pre>
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex items-center gap-3">
               <Button variant="outline" size="sm" onClick={copy}>
                 <IconCopy /> {copied ? "Copied" : "Copy"}
               </Button>
-              <Button variant="outline" size="sm" onClick={share}>
-                <IconShare /> Share to Notes
-              </Button>
             </div>
             {copyError && <p className="mt-2 text-[13px] text-danger">{copyError}</p>}
-            <p className="mt-2 text-[11px] text-ink-faint">
-              Copy keeps heading styles when pasting into iOS Notes; the share sheet sends plain text.
-            </p>
+            <p className="mt-2 text-[11px] text-ink-faint">Paste into iOS Notes — headings keep their styles.</p>
           </>
         )}
       </div>

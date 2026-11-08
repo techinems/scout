@@ -38,7 +38,7 @@ export type AppConfig = {
   aeromedical: { launchMinutes: number; cruiseSpeedKnots: number; landingBufferMinutes: number };
   loginNotice: string;
   footerNotice: string;
-  /** LZ picker base map. */
+  /** Layer the map pickers' toggle offers alongside the dark road map. */
   mapType: MapType;
   clockFormat: "24h" | "12h";
   distanceUnits: "mi" | "km";

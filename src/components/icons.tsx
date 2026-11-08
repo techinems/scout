@@ -131,3 +131,15 @@ export const IconRoute = (p: IconProps) => (
     <path d="M5.5 12.5H10a2.5 2.5 0 0 0 0-5H6a2.5 2.5 0 0 1 0-5h4.5" strokeDasharray="2.5 2" />
   </svg>
 );
+
+export const IconMenu = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M2.5 4h11M2.5 8h11M2.5 12h11" />
+  </svg>
+);
+
+export const IconClose = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="m3.5 3.5 9 9M12.5 3.5l-9 9" />
+  </svg>
+);

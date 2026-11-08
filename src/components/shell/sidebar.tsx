@@ -41,7 +41,7 @@ export function Sidebar({ user }: { user: CurrentUser }) {
     .toUpperCase();
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-edge bg-surface">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-r border-edge bg-surface md:w-56">
       <div className="px-4 pt-5 pb-4 border-b border-edge">
         <Link href="/" className="block">
           <Wordmark />

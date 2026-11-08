@@ -21,9 +21,13 @@ import {
   LocationForm,
   LocationRowActions,
   MissionBasicsForm,
+  MedicalDirectorPicker,
+  MedicalDirectorRemove,
   MissionVehiclePicker,
   MissionVehicleRemove,
 } from "./mission-forms";
+import { isMedconText } from "@/lib/medcon";
+import { displayAddress } from "@/lib/address";
 import { FacilityPlan } from "./facility-plan";
 import { LocalEmsCard } from "./local-ems";
 
@@ -53,6 +57,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
       },
       assignments: { include: { personnel: true, crew: true }, orderBy: { personnel: { name: "asc" } } },
       vehicles: { include: { vehicle: true } },
+      medicalDirectors: { include: { personnel: true }, orderBy: { createdAt: "asc" } },
       notes: { orderBy: { generatedAt: "desc" }, take: 1 },
     },
   });
@@ -81,9 +86,15 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
   const assignablePersonnel = allPersonnel.filter(
     (p) => !mission.assignments.some((a) => a.personnelId === p.id),
   );
+  const directorIds = new Set(mission.medicalDirectors.map((d) => d.personnelId));
+  const directorCandidates = allPersonnel
+    .filter((p) => !directorIds.has(p.id))
+    .map((p) => ({ id: p.id, name: p.name, callsign: p.callsign, title: p.title }));
   const crewOptions = mission.crews.map((c) => ({ id: c.id, name: c.name }));
   const target = mission.locations.find((l) => l.kind === "TARGET") ?? null;
   const mapsApiKey = process.env.GOOGLE_MAPS_BROWSER_KEY ?? process.env.GOOGLE_MAPS_API_KEY ?? null;
+  const mapView = { ...appConfig.mapCenter, type: appConfig.mapType };
+  const mapAnchor = target ? { lat: target.lat, lng: target.lng, label: "TGT" } : null;
 
   return (
     <div className="space-y-6">
@@ -119,7 +130,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
         )}
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           {/* Locations */}
           <Card>
@@ -132,7 +143,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
               action={
                 canEdit && (
                   <Modal title="Add location" trigger={<Button variant="ghost" size="sm"><IconPlus /> Add</Button>}>
-                    <LocationForm missionId={mission.id} mapsApiKey={mapsApiKey} mapView={{ ...appConfig.mapCenter, type: appConfig.mapType }} />
+                    <LocationForm missionId={mission.id} mapsApiKey={mapsApiKey} mapView={mapView} anchor={mapAnchor} />
                   </Modal>
                 )
               }
@@ -151,7 +162,7 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm">
                         {l.label && <span className="font-medium">{l.label} — </span>}
-                        {l.address}
+                        {displayAddress(l.address)}
                       </p>
                       {l.notes && <p className="truncate text-[12px] text-ink-faint">{l.notes}</p>}
                     </div>
@@ -171,7 +182,8 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
                           lng: l.lng,
                         }}
                         mapsApiKey={mapsApiKey}
-                        mapView={{ ...appConfig.mapCenter, type: appConfig.mapType }}
+                        mapView={mapView}
+                        anchor={mapAnchor}
                       />
                     )}
                   </li>
@@ -314,6 +326,41 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
                   Nobody assigned yet. Add a crew, then assign personnel to it.
                 </p>
               )}
+
+              {/* Medical direction — every mission needs at least one. */}
+              <div>
+                <div className="mb-1.5 flex items-center gap-2">
+                  <p className="kicker">Medical direction</p>
+                  {canEdit && (
+                    <span className="ml-auto">
+                      <MedicalDirectorPicker
+                        missionId={mission.id}
+                        suggested={directorCandidates.filter((p) => isMedconText(p.title))}
+                        others={directorCandidates.filter((p) => !isMedconText(p.title))}
+                      />
+                    </span>
+                  )}
+                </div>
+                {mission.medicalDirectors.length === 0 ? (
+                  <p className="rounded-(--radius-control) border border-warn/40 bg-warn-soft px-3 py-2 text-[12px] text-warn">
+                    No medical director assigned — every mission needs at least one.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-edge/60 rounded-(--radius-control) border border-edge">
+                    {mission.medicalDirectors.map((d) => (
+                      <li key={d.personnelId} className="flex items-center gap-3 px-3 py-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm">{d.personnel.name}</p>
+                          <p className="truncate text-[12px] text-ink-faint">
+                            {[d.personnel.title, d.personnel.phone].filter(Boolean).join(" · ") || "—"}
+                          </p>
+                        </div>
+                        {canEdit && <MedicalDirectorRemove missionId={mission.id} personnelId={d.personnelId} />}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </Card>
         </div>
@@ -343,6 +390,9 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
           {/* Local EMS */}
           <LocalEmsCard
             canEdit={canEdit}
+            mapsApiKey={mapsApiKey}
+            mapView={mapView}
+            anchor={mapAnchor}
             data={{
               missionId: mission.id,
               localEmsName: mission.localEmsName,
@@ -350,6 +400,8 @@ export default async function MissionPage({ params }: { params: Promise<{ id: st
               localEmsPocName: mission.localEmsPocName,
               localEmsPocPhone: mission.localEmsPocPhone,
               stagingAddress: mission.localEmsStagingAddress,
+              stagingLat: mission.localEmsStagingLat,
+              stagingLng: mission.localEmsStagingLng,
             }}
           />
 
